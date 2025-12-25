@@ -84,7 +84,7 @@ npm run build
 
 ### Frontend (React/Vite)
 
-- **Module Federation**: Remote module loading via `@originjs/vite-plugin-federation`
+- **Module Federation**: Remote module loading via `@originjs/vite-plugin-federation` (shared modules configured with `eager: false` to allow proper dependency resolution)
 - **UI Framework**: React 18 with TypeScript
 - **Map Library**: Deck.gl with Mapbox overlay
 - **Styling**: Tailwind CSS + `@nekazari/ui-kit`
