@@ -89,7 +89,7 @@ npm run build
 - **Map Library**: Deck.gl with Mapbox overlay
 - **Styling**: Tailwind CSS + `@nekazari/ui-kit`
 - **State Management**: React Context API
-- **Web Server**: Nginx with custom configuration for `/modules/vegetation-prime/*` path handling (uses alias directive to map paths correctly)
+- **Web Server**: Nginx with custom configuration for `/modules/vegetation-prime/*` path handling (uses regex location with rewrite to map paths correctly)
 
 ---
 
@@ -334,7 +334,7 @@ docker-compose up -d
 ### Important Notes
 
 - **Image Versions**: Deployments use versioned tags (e.g., `v1.0.0`) instead of `latest` for stability
-- **Frontend Nginx Configuration**: The frontend includes `nginx.conf` to properly handle the `/modules/vegetation-prime/*` path prefix from ingress routing
+- **Frontend Nginx Configuration**: The frontend includes `nginx.conf` with regex location pattern (`~ ^/modules/vegetation-prime/(.*)$`) and rewrite directive to properly map the ingress path `/modules/vegetation-prime/*` to the filesystem root. This ensures Module Federation chunks (`__federation_expose_*.js`) are served correctly.
 - **Environment Variables**: Secrets (including `MODULE_MANAGEMENT_KEY`, `DATABASE_URL`, etc.) are managed by Core Platform and injected via ConfigMaps/Secrets
 - **Image Pull Policy**: Set to `Always` to ensure latest images are pulled (consider using specific versions in production)
 
