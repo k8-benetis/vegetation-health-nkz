@@ -48,7 +48,7 @@ export class VegetationApiClient {
   }
 
   async listScenes(
-    entityId?: string,
+    entityId?: string | null,
     startDate?: string,
     endDate?: string,
     limit = 50

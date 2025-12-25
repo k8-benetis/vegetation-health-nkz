@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Leaf, Calendar } from 'lucide-react';
-import { Card, Select, Button } from '@nekazari/ui-kit';
+import { Card, Select } from '@nekazari/ui-kit';
 import { useVegetationContext } from '../../services/vegetationContext';
 import type { VegetationIndexType } from '../../types';
 

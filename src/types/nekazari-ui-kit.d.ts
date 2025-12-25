@@ -31,8 +31,8 @@ declare module '@nekazari/ui-kit' {
     onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
     placeholder?: string;
     className?: string;
-    min?: number;
-    max?: number;
+    min?: number | string;
+    max?: number | string;
   }
 
   export const Input: React.FC<InputProps>;

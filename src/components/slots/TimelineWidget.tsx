@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Calendar, TrendingUp, Cloud, CloudOff, Loader2 } from 'lucide-react';
+import { Calendar, Cloud, CloudOff, Loader2 } from 'lucide-react';
 import { Card } from '@nekazari/ui-kit';
 import { useVegetationContext } from '../../services/vegetationContext';
 import { useVegetationApi } from '../../services/api';
@@ -19,7 +19,6 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
     selectedIndex,
     selectedDate,
     selectedEntityId,
-    selectedSceneId,
     setSelectedDate,
     setSelectedSceneId,
   } = useVegetationContext();
@@ -38,7 +37,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
       setError(null);
 
       try {
-        const data = await api.listScenes(effectiveEntityId);
+        const data = await api.listScenes(effectiveEntityId || undefined);
         setScenes(data.scenes || []);
         
         // Auto-select most recent scene if none selected

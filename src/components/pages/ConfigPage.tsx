@@ -255,10 +255,14 @@ export const ConfigPage: React.FC = () => {
               </label>
               <Input
                 type="number"
-                min="0"
-                max="100"
+                min={0}
+                max={100}
                 value={config.cloud_coverage_threshold?.toString() || '20'}
-                onChange={(e) => setConfig({ ...config, cloud_coverage_threshold: parseFloat(e.target.value) })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value = e.target.value;
+                  const numValue = value === '' ? undefined : parseFloat(value);
+                  setConfig({ ...config, cloud_coverage_threshold: numValue });
+                }}
                 className="w-full"
               />
               <p className="text-xs text-gray-500 mt-1">

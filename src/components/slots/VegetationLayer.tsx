@@ -3,7 +3,7 @@
  * This component does NOT render DOM, it returns a Deck.gl layer configuration.
  */
 
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BitmapLayer } from '@deck.gl/layers';
 import { TileLayer } from '@deck.gl/geo-layers';
 import { useVegetationContext } from '../../services/vegetationContext';
@@ -109,7 +109,7 @@ export function useVegetationLayer(
 export const VegetationLayer: React.FC<VegetationLayerProps> = ({
   onLayerReady,
 }) => {
-  const { selectedIndex, selectedDate, selectedEntityId } = useVegetationContext();
+  const { selectedEntityId } = useVegetationContext();
   const layer = useVegetationLayer(selectedEntityId || undefined);
 
   useEffect(() => {
