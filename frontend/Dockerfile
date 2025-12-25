@@ -12,6 +12,7 @@ RUN npm ci
 
 # Copy all necessary files for build
 COPY src/ ./src/
+COPY index.html ./
 COPY vite.config.ts ./
 COPY tsconfig.json ./
 COPY tsconfig.node.json ./
@@ -19,12 +20,6 @@ COPY tailwind.config.js ./
 COPY postcss.config.js ./
 COPY postcss.config.cjs ./ 2>/dev/null || true
 COPY manifest.json ./
-COPY index.css ./src/index.css 2>/dev/null || true
-
-# Create index.html if it doesn't exist (Vite will generate it)
-RUN if [ ! -f index.html ]; then \
-      echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Vegetation Prime</title></head><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>' > index.html; \
-    fi
 
 # Build application
 RUN npm run build
