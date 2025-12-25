@@ -6,7 +6,6 @@ import { NKZClient } from '@nekazari/sdk';
 import { useAuth } from '@nekazari/sdk';
 import type {
   VegetationJob,
-  VegetationIndex,
   VegetationConfig,
   JobCreateParams,
   IndexCalculationParams,

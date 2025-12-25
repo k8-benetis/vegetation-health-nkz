@@ -132,7 +132,7 @@ For multi-architecture builds (amd64 + arm64), you need to use GitHub Actions or
 ```bash
 docker buildx create --use
 docker buildx build --platform linux/amd64,linux/arm64 \
-  -t ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-backend:latest \
+  -t ghcr.io/............:latest \
   --push \
   ./backend
 ```

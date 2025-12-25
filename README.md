@@ -364,6 +364,6 @@ For issues, questions, or contributions:
 
 **Made for the Nekazari Platform**
 
-[Website](https://nekazari.artotxiki.com) • [Documentation](https://docs.nekazari.com) • [License](LICENSE)
+[Website](https://nekazari.artotxiki.com) • [Documentation](https://nekazari.artotxiki.com) • [License](LICENSE)
 
 </div>
