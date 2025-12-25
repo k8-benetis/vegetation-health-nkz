@@ -23,7 +23,7 @@ flower==2.0.1  # Celery monitoring
 # Authentication
 pyjwt==2.8.0
 cryptography==41.0.7
-PyJWKClient==1.0.0
+# Note: PyJWKClient is included in pyjwt package (from jwt import PyJWKClient)
 
 # Geospatial processing (install in order)
 numpy==1.24.3
@@ -37,7 +37,7 @@ geopandas==0.14.1; sys_platform != "win32"
 
 # Sentinel-2 data access
 pystac-client==0.7.0
-sentinelsat==1.2.0
+sentinelsat==1.2.1
 
 # Image processing
 Pillow==10.1.0
