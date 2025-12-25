@@ -17,8 +17,11 @@ export default defineConfig({
         './VegetationLayerControl': './src/components/slots/VegetationLayerControl.tsx',
       },
       shared: {
-        // Don't share React/ReactDOM - bundle them directly since host doesn't use Module Federation
-        // This makes the module self-contained and independent
+        // Self-contained module architecture: React/ReactDOM/React Router are bundled directly
+        // This ensures long-term compatibility and independence from platform updates.
+        // See: https://github.com/your-org/nekazari-public/blob/main/docs/development/MODULE_DEVELOPMENT_BEST_PRACTICES.md
+        // 
+        // Only platform-specific packages are shared (they're lightweight and version-stable)
         '@nekazari/ui-kit': {
           singleton: false,
           requiredVersion: '^1.0.0',
@@ -26,6 +29,8 @@ export default defineConfig({
         '@nekazari/sdk': {
           singleton: false,
           requiredVersion: '^1.0.0',
+          // Note: SDK automatically obtains auth context from host via React Context
+          // The host's AuthProvider wraps all modules, so useAuth() works correctly
         },
       },
     }),
@@ -52,10 +57,12 @@ export default defineConfig({
     target: 'esnext',
     minify: false,
     cssCodeSplit: false,
-    // Don't externalize shared modules - let Module Federation handle them
+    // Self-contained architecture: React is bundled, not externalized
+    // This ensures the module works independently without host dependencies
     rollupOptions: {
       output: {
-        // Module Federation will handle shared modules
+        // Module Federation handles module sharing internally
+        // React/ReactDOM/React Router are bundled directly (not externalized)
       },
     },
   },

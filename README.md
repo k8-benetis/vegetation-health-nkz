@@ -84,7 +84,10 @@ npm run build
 
 ### Frontend (React/Vite)
 
-- **Module Federation**: Remote module loading via `@originjs/vite-plugin-federation` (shared modules configured with `eager: false` to allow proper dependency resolution)
+- **Module Federation**: Self-contained remote module using `@originjs/vite-plugin-federation`
+  - **Architecture**: Autonomous microfrontend (React, ReactDOM, and React Router are bundled directly, not shared from host)
+  - **Rationale**: Ensures long-term compatibility and independence from platform updates (see [Module Development Best Practices](../../nekazari-public/docs/development/MODULE_DEVELOPMENT_BEST_PRACTICES.md))
+  - **SDK Integration**: Uses `@nekazari/sdk` with automatic host context resolution via `useAuth()` hook
 - **UI Framework**: React 18 with TypeScript
 - **Map Library**: Deck.gl with Mapbox overlay
 - **Styling**: Tailwind CSS + `@nekazari/ui-kit`
