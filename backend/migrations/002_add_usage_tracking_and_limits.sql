@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS vegetation_usage_log (
     -- Timestamp
     processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     
     -- Metadata
     bounds GEOMETRY(POLYGON, 4326)  -- For area calculation verification
