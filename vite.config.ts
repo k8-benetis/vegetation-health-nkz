@@ -17,33 +17,15 @@ export default defineConfig({
         './VegetationLayerControl': './src/components/slots/VegetationLayerControl.tsx',
       },
       shared: {
-        'react': {
-          singleton: true,
-          requiredVersion: '^18.3.1',
-          eager: false,
-          shareScope: 'default',
-        },
-        'react-dom': {
-          singleton: true,
-          requiredVersion: '^18.3.1',
-          eager: false,
-          shareScope: 'default',
-        },
-        'react-router-dom': {
-          singleton: true,
-          requiredVersion: '^6.26.0',
-          eager: false,
-          shareScope: 'default',
-        },
+        // Don't share React/ReactDOM - bundle them directly since host doesn't use Module Federation
+        // This makes the module self-contained and independent
         '@nekazari/ui-kit': {
           singleton: false,
           requiredVersion: '^1.0.0',
-          // Don't set import: false - let Module Federation bundle it
         },
         '@nekazari/sdk': {
           singleton: false,
           requiredVersion: '^1.0.0',
-          // Don't set import: false - let Module Federation bundle it
         },
       },
     }),
