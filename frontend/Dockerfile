@@ -29,46 +29,8 @@ FROM nginx:alpine
 # Copy built assets
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy custom nginx config (with CORS)
-RUN echo 'server { \
-    listen 80; \
-    server_name _; \
-    root /usr/share/nginx/html; \
-    index index.html; \
-    \
-    # CORS headers for Module Federation \
-    add_header Access-Control-Allow-Origin * always; \
-    add_header Access-Control-Allow-Methods "GET, OPTIONS" always; \
-    add_header Access-Control-Allow-Headers "Authorization, Content-Type" always; \
-    \
-    # Handle preflight requests \
-    if ($request_method = OPTIONS) { \
-        return 204; \
-    } \
-    \
-    # Short cache for remoteEntry.js (critical for Module Federation updates) \
-    location ~* remoteEntry\.js$ { \
-        add_header Access-Control-Allow-Origin * always; \
-        add_header Cache-Control "public, max-age=60, must-revalidate"; \
-        try_files $uri =404; \
-    } \
-    \
-    # Handle /modules/vegetation-prime prefix (from ingress) \
-    location /modules/vegetation-prime/ { \
-        alias /usr/share/nginx/html/; \
-        try_files $uri $uri/ /modules/vegetation-prime/index.html; \
-    } \
-    # Serve static files from root \
-    location / { \
-        try_files $uri $uri/ /index.html; \
-    } \
-    \
-    # Cache static assets \
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ { \
-        expires 1y; \
-        add_header Cache-Control "public, immutable"; \
-    } \
-}' > /etc/nginx/conf.d/default.conf
+# Copy custom nginx config (with CORS and module path support)
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port
 EXPOSE 80
