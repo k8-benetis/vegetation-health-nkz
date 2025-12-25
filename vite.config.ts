@@ -35,8 +35,16 @@ export default defineConfig({
           eager: false,
           shareScope: 'default',
         },
-        // @nekazari/sdk and @nekazari/ui-kit are NOT shared - they are bundled with the module
-        // This ensures the module works independently without requiring these packages from the host
+        '@nekazari/ui-kit': {
+          singleton: false,
+          requiredVersion: '^1.0.0',
+          // Don't set import: false - let Module Federation bundle it
+        },
+        '@nekazari/sdk': {
+          singleton: false,
+          requiredVersion: '^1.0.0',
+          // Don't set import: false - let Module Federation bundle it
+        },
       },
     }),
   ],
