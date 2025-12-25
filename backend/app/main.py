@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.database import get_db_with_tenant, init_db
+from app.database import get_db_with_tenant, get_db_session, init_db
 from app.middleware.auth import require_auth, get_tenant_id
 from app.middleware.service_auth import require_service_auth
 from app.models import (
