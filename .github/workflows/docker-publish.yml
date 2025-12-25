@@ -47,12 +47,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            type=sha,prefix={{branch}}-
+            type=raw,value=${{ env.VERSION }}
             type=raw,value=latest,enable={{is_default_branch}}
       
       - name: Build and push backend image
@@ -60,7 +58,7 @@ jobs:
         with:
           context: ./backend
           file: ./backend/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: ${{ steps.meta-backend.outputs.tags }}
           labels: ${{ steps.meta-backend.outputs.labels }}
           cache-from: type=gha
@@ -93,12 +91,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            type=sha,prefix={{branch}}-
+            type=raw,value=${{ env.VERSION }}
             type=raw,value=latest,enable={{is_default_branch}}
       
       - name: Build and push frontend image
@@ -108,10 +104,9 @@ jobs:
           file: ./frontend/Dockerfile
           build-args: |
             NODE_ENV=production
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
-
