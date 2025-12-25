@@ -214,23 +214,42 @@ npm run typecheck  # TypeScript validation
 
 ## Docker Deployment
 
-### Backend
+### Using Pre-built Images (Recommended)
+
+Images are automatically built and published to **GitHub Container Registry (GHCR)**:
 
 ```bash
-cd backend
-docker build -t vegetation-prime-backend:1.0.0 .
-docker run -p 8000:8000 \
-  -e DATABASE_URL="postgresql://..." \
-  -e MODULE_MANAGEMENT_KEY="..." \
-  vegetation-prime-backend:1.0.0
+# Backend
+docker run -d \
+  --name vegetation-prime-backend \
+  -p 8000:8000 \
+  -e DATABASE_URL="postgresql://user:pass@host:5432/nekazari" \
+  -e MODULE_MANAGEMENT_KEY="your-secret-key" \
+  -e CELERY_BROKER_URL="redis://redis:6379/0" \
+  -e REDIS_CACHE_URL="redis://redis:6379/1" \
+  ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-backend:latest
+
+# Frontend
+docker run -d \
+  --name vegetation-prime-frontend \
+  -p 80:80 \
+  ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-frontend:latest
 ```
 
-### Frontend
+**Available tags**: `latest`, `v1.0.0`, `main`, `develop`
+
+See [Docker Images Documentation](docs/DOCKER_IMAGES.md) for details.
+
+### Building Locally
 
 ```bash
+# Backend
+cd backend
+docker build -t vegetation-prime-backend:local .
+
+# Frontend
 cd frontend
-docker build -t vegetation-prime-frontend:1.0.0 .
-docker run -p 80:80 vegetation-prime-frontend:1.0.0
+docker build -t vegetation-prime-frontend:local .
 ```
 
 ### Docker Compose (Full Stack)
