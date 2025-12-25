@@ -53,9 +53,14 @@ RUN echo 'server { \
         try_files $uri =404; \
     } \
     \
-    # Serve static files \
+    # Handle /modules/vegetation-prime prefix (from ingress) \
+    location /modules/vegetation-prime/ { \
+        alias /usr/share/nginx/html/; \
+        try_files $uri $uri/ /modules/vegetation-prime/index.html; \
+    } \
+    # Serve static files from root \
     location / { \
-        try_files $uri $uri/ =404; \
+        try_files $uri $uri/ /index.html; \
     } \
     \
     # Cache static assets \
