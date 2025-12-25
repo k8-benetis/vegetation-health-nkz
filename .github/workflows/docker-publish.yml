@@ -1,11 +1,16 @@
 name: Build and Publish Docker Images
 
 on:
-  # Only build on tags (releases) to avoid constant builds during development
-  # For development, use local builds: ./scripts/build-and-push.sh
+  # Build on tags (releases) and pushes to main
   push:
+    branches:
+      - main
     tags:
       - 'v*.*.*'
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+      - '.github/workflows/docker-publish.yml'
   # Allow manual trigger for testing
   workflow_dispatch:
     inputs:
