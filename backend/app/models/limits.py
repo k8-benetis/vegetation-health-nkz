@@ -6,8 +6,8 @@ from datetime import datetime
 from typing import Optional
 from decimal import Decimal
 
-from sqlalchemy import Boolean, CheckConstraint, Column, Integer, String, Text, UniqueConstraint, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import DECIMAL, UUID
+from sqlalchemy import Boolean, CheckConstraint, Column, Integer, Numeric, String, Text, UniqueConstraint, DateTime, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
 from geoalchemy2 import Geometry
 
 from .base import BaseModel, TenantMixin
@@ -23,8 +23,8 @@ class VegetationPlanLimits(BaseModel, TenantMixin):
     plan_name = Column(Text, nullable=True)
     
     # Volume limits (Hectares)
-    monthly_ha_limit = Column(DECIMAL(12, 2), default=Decimal('10.0'), nullable=False)
-    daily_ha_limit = Column(DECIMAL(12, 2), default=Decimal('5.0'), nullable=False)
+    monthly_ha_limit = Column(Numeric(12, 2), default=Decimal('10.0'), nullable=False)
+    daily_ha_limit = Column(Numeric(12, 2), default=Decimal('5.0'), nullable=False)
     
     # Frequency limits (Jobs per day/month)
     daily_jobs_limit = Column(Integer, default=5, nullable=False)
@@ -55,7 +55,7 @@ class VegetationUsageStats(BaseModel, TenantMixin):
     month = Column(Integer, nullable=False)
     
     # Volume usage (Hectares)
-    ha_processed = Column(DECIMAL(12, 4), default=Decimal('0.0'), nullable=False)
+    ha_processed = Column(Numeric(12, 4), default=Decimal('0.0'), nullable=False)
     ha_processed_count = Column(Integer, default=0, nullable=False)
     
     # Frequency usage (Jobs)
@@ -87,7 +87,7 @@ class VegetationUsageLog(BaseModel, TenantMixin):
     job_id = Column(UUID(as_uuid=True), ForeignKey('vegetation_jobs.id', ondelete='CASCADE'), nullable=False)
     
     # Usage metrics
-    ha_processed = Column(DECIMAL(12, 4), default=Decimal('0.0'), nullable=False)
+    ha_processed = Column(Numeric(12, 4), default=Decimal('0.0'), nullable=False)
     job_type = Column(String(50), nullable=False)
     
     # Timestamp

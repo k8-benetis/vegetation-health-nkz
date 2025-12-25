@@ -38,7 +38,7 @@ RUN echo 'server { \
     \
     # CORS headers for Module Federation \
     add_header Access-Control-Allow-Origin * always; \
-    add_header Access-Control-Allow-Methods "GET, POST, OPTIONS" always; \
+    add_header Access-Control-Allow-Methods "GET, OPTIONS" always; \
     add_header Access-Control-Allow-Headers "Authorization, Content-Type" always; \
     \
     # Handle preflight requests \
@@ -46,9 +46,16 @@ RUN echo 'server { \
         return 204; \
     } \
     \
+    # Short cache for remoteEntry.js (critical for Module Federation updates) \
+    location ~* remoteEntry\.js$ { \
+        add_header Access-Control-Allow-Origin * always; \
+        add_header Cache-Control "public, max-age=60, must-revalidate"; \
+        try_files $uri =404; \
+    } \
+    \
     # Serve static files \
     location / { \
-        try_files $uri $uri/ /index.html; \
+        try_files $uri $uri/ =404; \
     } \
     \
     # Cache static assets \

@@ -6,8 +6,8 @@ from datetime import datetime
 from typing import Optional
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import DECIMAL, JSONB, UUID
+from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from .base import BaseModel, TenantMixin
 
@@ -29,10 +29,10 @@ class VegetationIndexCache(BaseModel, TenantMixin):
     formula = Column(Text, nullable=True)  # For custom indices
     
     # Calculated values
-    mean_value = Column(DECIMAL(10, 6), nullable=True)
-    min_value = Column(DECIMAL(10, 6), nullable=True)
-    max_value = Column(DECIMAL(10, 6), nullable=True)
-    std_dev = Column(DECIMAL(10, 6), nullable=True)
+    mean_value = Column(Numeric(10, 6), nullable=True)
+    min_value = Column(Numeric(10, 6), nullable=True)
+    max_value = Column(Numeric(10, 6), nullable=True)
+    std_dev = Column(Numeric(10, 6), nullable=True)
     pixel_count = Column(Integer, nullable=True)
     
     # Spatial aggregation

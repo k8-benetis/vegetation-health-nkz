@@ -5,7 +5,7 @@ Vegetation configuration model.
 from typing import Optional
 from decimal import Decimal
 
-from sqlalchemy import Boolean, CheckConstraint, Column, DECIMAL, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Column, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 
 from .base import BaseModel, TenantMixin
@@ -22,7 +22,7 @@ class VegetationConfig(BaseModel, TenantMixin):
     
     # Processing preferences
     default_index_type = Column(String(20), default='NDVI', nullable=False)
-    cloud_coverage_threshold = Column(DECIMAL(5, 2), default=Decimal('20.0'), nullable=False)
+    cloud_coverage_threshold = Column(Numeric(5, 2), default=Decimal('20.0'), nullable=False)
     auto_process = Column(Boolean, default=True, nullable=False)
     
     # Storage configuration

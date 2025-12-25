@@ -15,119 +15,111 @@
 -- =============================================================================
 
 -- Insert module registration
-INSERT INTO modules (
+INSERT INTO marketplace_modules (
     id,
     name,
     display_name,
-    version,
     description,
+    remote_entry_url,
+    scope,
+    exposed_module,
+    version,
     author,
     category,
-    module_type,
+    icon_url,
     route_path,
     label,
-    icon,
-    icon_url,
-    required_roles,
-    dependencies,
-    permissions,
-    build_config,
-    is_active,
+    module_type,
+    required_plan_type,
+    pricing_tier,
     is_local,
-    backend_url,
-    frontend_url,
-    created_at,
-    updated_at
+    is_active,
+    required_roles,
+    metadata
 ) VALUES (
-    'vegetation-prime',  -- Module ID
-    'vegetation-prime',  -- Internal name
-    'Vegetation Prime',  -- Display name
-    '1.0.0',            -- Version
+    'vegetation-prime',                                                              -- Module ID
+    'vegetation-prime',                                                              -- Internal name
+    'Vegetation Prime',                                                              -- Display name
     'High-performance vegetation intelligence suite for Sentinel-2 analysis. Provides NDVI, EVI, SAVI, GNDVI, NDRE indices with real-time tile serving and historical time series analysis.',
-    'Nekazari Team',    -- Author
-    'analytics',        -- Category
-    'ADDON_PAID',       -- Module type (can be ADDON_FREE, ADDON_PAID, ENTERPRISE)
-    '/vegetation',      -- Route path
-    'Vegetation',       -- Menu label
-    '🌱',               -- Icon emoji
-    NULL,               -- Icon URL (optional)
-    ARRAY['User'],      -- Required roles (minimum)
-    ARRAY['@nekazari/sdk@^1.0.0', '@nekazari/ui-kit@^1.0.0'],  -- Dependencies
+    'https://nekazari.artotxiki.com/modules/vegetation-prime/assets/remoteEntry.js', -- Remote entry URL (public, via ingress)
+    'vegetation_prime_module',                                                       -- Module Federation scope (must match vite.config.ts)
+    './App',                                                                         -- Exposed module path (must match vite.config.ts)
+    '1.0.0',                                                                         -- Version
+    'Nekazari Team',                                                                 -- Author
+    'analytics',                                                                     -- Category
+    NULL,                                                                            -- Icon URL (optional)
+    '/vegetation',                                                                   -- Frontend route path
+    'Vegetation',                                                                    -- Menu label
+    'ADDON_PAID',                                                                    -- Module type
+    'premium',                                                                       -- Required plan type
+    'PAID',                                                                          -- Pricing tier
+    false,                                                                           -- Is local (external module)
+    true,                                                                            -- Is active
+    ARRAY['Farmer', 'TenantAdmin', 'PlatformAdmin'],                                -- Required roles
     '{
-        "api_access": true,
-        "external_requests": true,
-        "storage": true,
-        "geospatial": true
-    }'::jsonb,          -- Permissions
-    '{
-        "exposes": {
-            "./App": "./App",
-            "./VegetationLayer": "./VegetationLayer",
-            "./TimelineWidget": "./TimelineWidget",
-            "./VegetationLayerControl": "./VegetationLayerControl"
+        "icon": "🌱",
+        "color": "#10B981",
+        "shortDescription": "Advanced vegetation health monitoring and analysis",
+        "features": [
+            "Multi-spectral index calculation (NDVI, EVI, SAVI, GNDVI, NDRE)",
+            "Custom formula engine",
+            "Sentinel-2 L2A integration",
+            "Time series analysis",
+            "FIWARE NGSI-LD integration",
+            "High-performance raster visualization"
+        ],
+        "backend_services": ["vegetation-prime-api"],
+        "external_dependencies": ["Copernicus Data Space Ecosystem"],
+        "contextPanel": {
+            "description": "Analyze vegetation health using Sentinel-2 satellite imagery",
+            "instructions": "Select a parcel and create a job to analyze vegetation indices",
+            "entityTypes": ["AgriParcel"]
         },
-        "shared": {
-            "react": {
-                "singleton": true,
-                "requiredVersion": "^18.3.1"
-            },
-            "react-dom": {
-                "singleton": true,
-                "requiredVersion": "^18.3.1"
-            },
-            "react-router-dom": {
-                "singleton": true,
-                "requiredVersion": "^6.26.0"
-            },
-            "@nekazari/sdk": {
-                "singleton": true,
-                "requiredVersion": "^1.0.0"
-            },
-            "@nekazari/ui-kit": {
-                "singleton": true,
-                "requiredVersion": "^1.0.0"
-            }
+        "permissions": {
+            "api_access": true,
+            "external_requests": true,
+            "storage": true,
+            "geospatial": true
         }
-    }'::jsonb,          -- Build config (Module Federation)
-    true,               -- Is active
-    false,              -- Is local (external module)
-    'http://vegetation-prime-api:8000',  -- Backend service URL (K8s internal)
-    'http://vegetation-prime-frontend',  -- Frontend service URL (K8s internal or ingress)
-    NOW(),              -- Created at
-    NOW()               -- Updated at
+    }'::jsonb
 ) ON CONFLICT (id) DO UPDATE SET
     version = EXCLUDED.version,
     description = EXCLUDED.description,
-    backend_url = EXCLUDED.backend_url,
-    frontend_url = EXCLUDED.frontend_url,
-    build_config = EXCLUDED.build_config,
+    remote_entry_url = EXCLUDED.remote_entry_url,
+    scope = EXCLUDED.scope,
+    exposed_module = EXCLUDED.exposed_module,
+    route_path = EXCLUDED.route_path,
+    label = EXCLUDED.label,
+    module_type = EXCLUDED.module_type,
+    required_plan_type = EXCLUDED.required_plan_type,
+    pricing_tier = EXCLUDED.pricing_tier,
+    metadata = EXCLUDED.metadata,
     updated_at = NOW();
 
 -- =============================================================================
 -- NOTES:
 -- =============================================================================
--- 1. BACKEND_URL: Use K8s service name for internal communication
---    Example: 'http://vegetation-prime-api:8000'
---    Or use ingress URL for external: 'https://api.nekazari.com/vegetation'
+-- 1. REMOTE_ENTRY_URL: Must be the public URL accessible through ingress
+--    Format: https://nekazari.artotxiki.com/modules/{module-id}/assets/remoteEntry.js
 --
--- 2. FRONTEND_URL: Use K8s service or ingress URL
---    Example: 'http://vegetation-prime-frontend' (internal)
---    Or: 'https://modules.nekazari.com/vegetation-prime' (external)
+-- 2. SCOPE: Must match the 'name' field in vite.config.ts federation plugin
+--    Current: 'vegetation_prime_module'
 --
--- 3. MODULE_TYPE: 
+-- 3. EXPOSED_MODULE: Must match the key in vite.config.ts federation exposes
+--    Current: './App'
+--
+-- 4. MODULE_TYPE: 
 --    - 'ADDON_FREE': Free for all tenants
 --    - 'ADDON_PAID': Requires subscription (monetization enabled)
 --    - 'ENTERPRISE': Enterprise-only features
 --
--- 4. PERMISSIONS: Adjust based on module requirements
---    - api_access: Can call Core Platform APIs
---    - external_requests: Can make external HTTP requests (Copernicus, etc.)
---    - storage: Can use storage service (S3/MinIO)
---    - geospatial: Can use PostGIS/geospatial features
---
 -- 5. After registration, the Core Platform will:
---    - Load the module frontend via Module Federation
---    - Route API requests to the backend URL
+--    - Load the module frontend via Module Federation from remote_entry_url
 --    - Display the module in the marketplace/admin panel
+--
+-- 6. To activate for a specific tenant:
+--    INSERT INTO tenant_installed_modules (tenant_id, module_id, is_enabled)
+--    VALUES ('your-tenant-id', 'vegetation-prime', true)
+--    ON CONFLICT (tenant_id, module_id) DO UPDATE SET is_enabled = true;
 -- =============================================================================
 
