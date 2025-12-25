@@ -216,7 +216,7 @@ npm run typecheck  # TypeScript validation
 
 ### Using Pre-built Images (Recommended)
 
-Images are automatically built and published to **GitHub Container Registry (GHCR)**:
+Images are automatically built and published to **GitHub Container Registry (GHCR)** on every push:
 
 ```bash
 # Backend
@@ -238,19 +238,29 @@ docker run -d \
 
 **Available tags**: `latest`, `v1.0.0`, `main`, `develop`
 
-See [Docker Images Documentation](docs/DOCKER_IMAGES.md) for details.
+### Building and Pushing Locally (With Real-time Logs)
 
-### Building Locally
+For development and testing, you can build locally and see logs in real-time:
 
 ```bash
-# Backend
-cd backend
-docker build -t vegetation-prime-backend:local .
+# Build and push to GHCR (interactive, shows all logs)
+./scripts/build-and-push.sh v1.0.0
 
-# Frontend
-cd frontend
-docker build -t vegetation-prime-frontend:local .
+# Or just build locally for testing (no push)
+./scripts/build-local.sh local
 ```
+
+**Benefits of local builds:**
+- See build logs in real-time
+- Test images before pushing
+- Debug build issues easily
+- Faster iteration during development
+
+**When to use each:**
+- **Local builds**: Development, testing, debugging, custom versions
+- **GitHub Actions**: Production releases, automated CI/CD, multi-arch builds
+
+See [Docker Images Documentation](docs/DOCKER_IMAGES.md) for details.
 
 ### Docker Compose (Full Stack)
 
