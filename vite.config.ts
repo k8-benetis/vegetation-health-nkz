@@ -36,16 +36,14 @@ export default defineConfig({
           shareScope: 'default',
         },
         '@nekazari/ui-kit': {
-          singleton: true,
+          singleton: false,  // Allow multiple instances if needed
           requiredVersion: '^1.0.0',
-          eager: false,
-          shareScope: 'default',
+          eager: true,  // Bundle these - host may not provide them
         },
         '@nekazari/sdk': {
-          singleton: true,
+          singleton: false,  // Allow multiple instances if needed
           requiredVersion: '^1.0.0',
-          eager: false,
-          shareScope: 'default',
+          eager: true,  // Bundle these - host may not provide them
         },
       },
     }),
