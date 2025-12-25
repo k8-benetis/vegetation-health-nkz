@@ -17,11 +17,28 @@ export default defineConfig({
         './VegetationLayerControl': './src/components/slots/VegetationLayerControl.tsx',
       },
       shared: {
-        // Self-contained module architecture: React/ReactDOM/React Router are bundled directly
-        // This ensures long-term compatibility and independence from platform updates.
-        // See: https://github.com/your-org/nekazari-public/blob/main/docs/development/MODULE_DEVELOPMENT_BEST_PRACTICES.md
-        // 
-        // Only platform-specific packages are shared (they're lightweight and version-stable)
+        // CRITICAL: React MUST be shared as singleton to avoid hook errors
+        // When a module renders inside host's React tree, both must use the same React instance
+        // This is a technical requirement, not a coupling issue - React requires singleton for hooks
+        'react': {
+          singleton: true,
+          requiredVersion: '^18.3.1',
+          eager: false,
+          shareScope: 'default',
+        },
+        'react-dom': {
+          singleton: true,
+          requiredVersion: '^18.3.1',
+          eager: false,
+          shareScope: 'default',
+        },
+        'react-router-dom': {
+          singleton: true,
+          requiredVersion: '^6.26.0',
+          eager: false,
+          shareScope: 'default',
+        },
+        // Platform-specific packages can be bundled (lightweight and version-stable)
         '@nekazari/ui-kit': {
           singleton: false,
           requiredVersion: '^1.0.0',
@@ -57,12 +74,16 @@ export default defineConfig({
     target: 'esnext',
     minify: false,
     cssCodeSplit: false,
-    // Self-contained architecture: React is bundled, not externalized
-    // This ensures the module works independently without host dependencies
+    // React must be shared via Module Federation (singleton) to work correctly
+    // when module renders inside host's React tree
     rollupOptions: {
+      external: ['react', 'react-dom', 'react-router-dom'],
       output: {
-        // Module Federation handles module sharing internally
-        // React/ReactDOM/React Router are bundled directly (not externalized)
+        globals: {
+          'react': 'React',
+          'react-dom': 'ReactDOM',
+          'react-router-dom': 'ReactRouterDOM',
+        },
       },
     },
   },
