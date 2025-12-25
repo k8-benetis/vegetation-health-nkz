@@ -23,19 +23,19 @@ export default defineConfig({
         'react': {
           singleton: true,
           requiredVersion: '^18.3.1',
-          eager: false,
+          import: false,  // Use global from host (window.React)
           shareScope: 'default',
         },
         'react-dom': {
           singleton: true,
           requiredVersion: '^18.3.1',
-          eager: false,
+          import: false,  // Use global from host (window.ReactDOM)
           shareScope: 'default',
         },
         'react-router-dom': {
           singleton: true,
           requiredVersion: '^6.26.0',
-          eager: false,
+          import: false,  // Use global from host (window.ReactRouterDOM)
           shareScope: 'default',
         },
         // Platform-specific packages can be bundled (lightweight and version-stable)
