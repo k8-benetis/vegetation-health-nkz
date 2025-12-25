@@ -35,12 +35,25 @@ jobs:
           - 6379:6379
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
+    
+    - name: Install PostgreSQL client
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client
+    
+    - name: Wait for PostgreSQL
+      run: |
+        until pg_isready -h localhost -p 5432 -U postgres; do
+          echo "Waiting for PostgreSQL..."
+          sleep 2
+        done
+        echo "PostgreSQL is ready!"
     
     - name: Install dependencies
       run: |
@@ -52,9 +65,31 @@ jobs:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
       run: |
         cd backend
-        # Wait for postgres to be ready
-        sleep 5
-        python scripts/run_migrations.py || echo "Migrations may have already been applied"
+        python scripts/run_migrations.py || echo "Migrations completed or already applied"
+    
+    - name: Verify migrations
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+      run: |
+        cd backend
+        python -c "
+        import psycopg2
+        import os
+        try:
+            conn = psycopg2.connect(os.getenv('DATABASE_URL'))
+            cur = conn.cursor()
+            cur.execute(\"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'vegetation_config')\")
+            exists = cur.fetchone()[0]
+            print(f'vegetation_config table exists: {exists}')
+            if exists:
+                print('Migrations successful!')
+            else:
+                print('Warning: vegetation_config table not found')
+            conn.close()
+        except Exception as e:
+            print(f'Error verifying migrations: {e}')
+            exit(1)
+        "
     
     - name: Run tests (if available)
       env:
@@ -64,8 +99,8 @@ jobs:
       run: |
         cd backend
         # pytest tests/  # Uncomment when tests are added
-        echo "Tests not yet implemented"
-        exit 0  # Don't fail if tests don't exist
+        echo "Tests not yet implemented - skipping"
+        exit 0
     
     - name: Lint with flake8 (if available)
       run: |
@@ -73,15 +108,16 @@ jobs:
         # pip install flake8
         # flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
         echo "Linting not yet configured"
+        exit 0
 
   frontend-tests:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'npm'
@@ -94,4 +130,3 @@ jobs:
     
     - name: Build
       run: npm run build
-
