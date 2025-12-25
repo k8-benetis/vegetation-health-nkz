@@ -20,31 +20,31 @@ export default defineConfig({
         'react': {
           singleton: true,
           requiredVersion: '^18.3.1',
-          import: false,  // Use global from host
+          eager: false,
           shareScope: 'default',
         },
         'react-dom': {
           singleton: true,
           requiredVersion: '^18.3.1',
-          import: false,
+          eager: false,
           shareScope: 'default',
         },
         'react-router-dom': {
           singleton: true,
           requiredVersion: '^6.26.0',
-          import: false,
+          eager: false,
           shareScope: 'default',
         },
         '@nekazari/ui-kit': {
           singleton: true,
           requiredVersion: '^1.0.0',
-          import: false,  // Share from host
+          eager: false,
           shareScope: 'default',
         },
         '@nekazari/sdk': {
           singleton: true,
           requiredVersion: '^1.0.0',
-          import: false,  // Share from host
+          eager: false,
           shareScope: 'default',
         },
       },
@@ -72,16 +72,10 @@ export default defineConfig({
     target: 'esnext',
     minify: false,
     cssCodeSplit: false,
+    // Don't externalize shared modules - let Module Federation handle them
     rollupOptions: {
-      external: ['react', 'react-dom', 'react-router-dom', '@nekazari/ui-kit', '@nekazari/sdk'],
       output: {
-        globals: {
-          'react': 'React',
-          'react-dom': 'ReactDOM',
-          'react-router-dom': 'ReactRouterDOM',
-          '@nekazari/ui-kit': 'NekazariUIKit',
-          '@nekazari/sdk': 'NekazariSDK',
-        },
+        // Module Federation will handle shared modules
       },
     },
   },
