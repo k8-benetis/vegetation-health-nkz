@@ -89,7 +89,7 @@ npm run build
 - **Map Library**: Deck.gl with Mapbox overlay
 - **Styling**: Tailwind CSS + `@nekazari/ui-kit`
 - **State Management**: React Context API
-- **Web Server**: Nginx with custom configuration for `/modules/vegetation-prime/*` path handling
+- **Web Server**: Nginx with custom configuration for `/modules/vegetation-prime/*` path handling (uses alias directive to map paths correctly)
 
 ---
 
