@@ -11,7 +11,11 @@ RUN apt-get update && apt-get install -y \
     gdal-bin \
     libgeos-dev \
     libproj-dev \
+    libgdal32 \
+    libgdal-dev \
+    libspatialindex-dev \
     postgresql-client \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Set GDAL environment variables
@@ -20,7 +24,8 @@ ENV C_INCLUDE_PATH=/usr/include/gdal
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .

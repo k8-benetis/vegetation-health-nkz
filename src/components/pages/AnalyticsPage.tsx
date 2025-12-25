@@ -4,9 +4,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, Calendar, Filter } from 'lucide-react';
-import { Card, Button, Select } from '@nekazari/ui-kit';
+import { Card, Select } from '@nekazari/ui-kit';
 import { useVegetationApi } from '../../services/api';
-import type { VegetationJob, VegetationIndexType } from '../../types';
+import type { VegetationJob } from '../../types';
 
 export const AnalyticsPage: React.FC = () => {
   const api = useVegetationApi();
@@ -97,7 +97,7 @@ export const AnalyticsPage: React.FC = () => {
             <h2 className="text-xl font-semibold text-gray-900">Recent Jobs</h2>
             <Select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setStatusFilter(e.target.value)}
               options={[
                 { value: 'all', label: 'All Status' },
                 { value: 'pending', label: 'Pending' },

@@ -65,6 +65,7 @@ export interface VegetationConfig {
   storage_type: 's3' | 'minio' | 'local';
   storage_bucket?: string;
   copernicus_client_id?: string;
+  copernicus_client_secret?: string;
 }
 
 export interface Bounds {

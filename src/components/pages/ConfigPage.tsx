@@ -22,7 +22,6 @@ export const ConfigPage: React.FC = () => {
     volume: { used_ha: number; limit_ha: number };
     frequency: { used_jobs_today: number; limit_jobs_today: number };
   } | null>(null);
-  const [usageLoading, setUsageLoading] = useState(false);
 
   useEffect(() => {
     loadConfig();
@@ -32,13 +31,10 @@ export const ConfigPage: React.FC = () => {
 
   const loadUsage = async () => {
     try {
-      setUsageLoading(true);
       const data = await api.getCurrentUsage();
       setUsage(data);
     } catch (err) {
       console.error('Error loading usage:', err);
-    } finally {
-      setUsageLoading(false);
     }
   };
 
@@ -203,7 +199,7 @@ export const ConfigPage: React.FC = () => {
               <Input
                 type="text"
                 value={config.copernicus_client_id || ''}
-                onChange={(e) => setConfig({ ...config, copernicus_client_id: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, copernicus_client_id: e.target.value })}
                 placeholder="Enter Copernicus Client ID"
                 className="w-full"
               />
@@ -216,7 +212,7 @@ export const ConfigPage: React.FC = () => {
               <Input
                 type="password"
                 value={''} // Don't show existing secret
-                onChange={(e) => setConfig({ ...config, copernicus_client_secret: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, copernicus_client_secret: e.target.value })}
                 placeholder="Enter new Client Secret (leave blank to keep existing)"
                 className="w-full"
               />
@@ -241,7 +237,7 @@ export const ConfigPage: React.FC = () => {
               </label>
               <Select
                 value={config.default_index_type || 'NDVI'}
-                onChange={(e) => setConfig({ ...config, default_index_type: e.target.value as VegetationIndexType })}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setConfig({ ...config, default_index_type: e.target.value as VegetationIndexType })}
                 options={[
                   { value: 'NDVI', label: 'NDVI' },
                   { value: 'EVI', label: 'EVI' },
