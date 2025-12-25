@@ -8,10 +8,13 @@ export default defineConfig({
   plugins: [
     react(),
     federation({
-      name: 'hello_world_module',
+      name: 'vegetation_prime_module',
       filename: 'remoteEntry.js',
       exposes: {
         './App': './src/App.tsx',
+        './VegetationLayer': './src/components/slots/VegetationLayer.tsx',
+        './TimelineWidget': './src/components/slots/TimelineWidget.tsx',
+        './VegetationLayerControl': './src/components/slots/VegetationLayerControl.tsx',
       },
       shared: {
         'react': {
@@ -32,6 +35,18 @@ export default defineConfig({
           import: false,
           shareScope: 'default',
         },
+        '@nekazari/ui-kit': {
+          singleton: true,
+          requiredVersion: '^1.0.0',
+          import: false,  // Share from host
+          shareScope: 'default',
+        },
+        '@nekazari/sdk': {
+          singleton: true,
+          requiredVersion: '^1.0.0',
+          import: false,  // Share from host
+          shareScope: 'default',
+        },
       },
     }),
   ],
@@ -50,14 +65,6 @@ export default defineConfig({
         target: 'https://nkz.artotxiki.com',
         changeOrigin: true,
         secure: true,
-        // Note: Add your token in headers if needed for development
-        // Uncomment and configure if you need to test API calls:
-        // configure: (proxy, _options) => {
-        //   proxy.on('proxyReq', (proxyReq, req, _res) => {
-        //     proxyReq.setHeader('Authorization', 'Bearer YOUR_TOKEN_HERE');
-        //     proxyReq.setHeader('X-Tenant-ID', 'your-tenant-id');
-        //   });
-        // },
       },
     },
   },
@@ -66,12 +73,14 @@ export default defineConfig({
     minify: false,
     cssCodeSplit: false,
     rollupOptions: {
-      external: ['react', 'react-dom', 'react-router-dom'],
+      external: ['react', 'react-dom', 'react-router-dom', '@nekazari/ui-kit', '@nekazari/sdk'],
       output: {
         globals: {
           'react': 'React',
           'react-dom': 'ReactDOM',
           'react-router-dom': 'ReactRouterDOM',
+          '@nekazari/ui-kit': 'NekazariUIKit',
+          '@nekazari/sdk': 'NekazariSDK',
         },
       },
     },

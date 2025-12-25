@@ -1,0 +1,76 @@
+"""
+Database configuration and session management.
+"""
+
+import os
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.pool import NullPool
+from contextlib import contextmanager
+
+from app.models.base import Base
+
+# Database URL
+DATABASE_URL = os.getenv(
+    'DATABASE_URL',
+    'postgresql://postgres:postgres@localhost:5432/nekazari'
+)
+
+# Create engine
+engine = create_engine(
+    DATABASE_URL,
+    poolclass=NullPool,  # Use NullPool for serverless/microservices
+    echo=os.getenv('SQL_ECHO', 'false').lower() == 'true',
+    connect_args={
+        'connect_timeout': 10,
+        'options': '-c timezone=utc'
+    }
+)
+
+# Create session factory
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+@event.listens_for(engine, "connect")
+def set_tenant_context(dbapi_conn, connection_record):
+    """Set tenant context for RLS on connection.
+    
+    Note: This is a placeholder - actual tenant context should be set
+    per-request using SET app.current_tenant = 'tenant_id'
+    """
+    pass
+
+
+def get_db_session() -> Session:
+    """Get database session (generator for dependency injection)."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@contextmanager
+def get_db_with_tenant(tenant_id: str):
+    """Get database session with tenant context set.
+    
+    Args:
+        tenant_id: Tenant ID for RLS
+        
+    Yields:
+        Database session
+    """
+    db = SessionLocal()
+    try:
+        # Set tenant context for RLS
+        db.execute(f"SET app.current_tenant = '{tenant_id}'")
+        db.commit()
+        yield db
+    finally:
+        db.close()
+
+
+def init_db():
+    """Initialize database (create tables)."""
+    Base.metadata.create_all(bind=engine)
+

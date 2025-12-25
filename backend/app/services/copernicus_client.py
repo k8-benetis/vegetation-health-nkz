@@ -1,0 +1,245 @@
+"""
+Copernicus Data Space Ecosystem client for downloading Sentinel-2 data.
+"""
+
+import logging
+import os
+from typing import List, Dict, Any, Optional
+from datetime import date, datetime
+from pathlib import Path
+import requests
+from requests.auth import HTTPBasicAuth
+import json
+
+logger = logging.getLogger(__name__)
+
+
+class CopernicusDataSpaceClient:
+    """Client for Copernicus Data Space Ecosystem API."""
+    
+    BASE_URL = "https://dataspace.copernicus.eu"
+    OAUTH_URL = f"{BASE_URL}/oauth/token"
+    CATALOG_URL = f"{BASE_URL}/api/v1/catalog/1.0.0"
+    
+    def __init__(self, client_id: str, client_secret: str):
+        """Initialize Copernicus Data Space client.
+        
+        Args:
+            client_id: OAuth2 client ID
+            client_secret: OAuth2 client secret
+        """
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.access_token: Optional[str] = None
+        self.token_expires_at: Optional[datetime] = None
+    
+    def _get_access_token(self) -> str:
+        """Get OAuth2 access token (with caching).
+        
+        Returns:
+            Access token string
+        """
+        # Check if token is still valid (with 5 min buffer)
+        if self.access_token and self.token_expires_at:
+            if datetime.utcnow() < (self.token_expires_at - timedelta(minutes=5)):
+                return self.access_token
+        
+        # Request new token
+        try:
+            response = requests.post(
+                self.OAUTH_URL,
+                auth=HTTPBasicAuth(self.client_id, self.client_secret),
+                data={
+                    'grant_type': 'client_credentials'
+                },
+                headers={'Content-Type': 'application/x-www-form-urlencoded'}
+            )
+            response.raise_for_status()
+            
+            token_data = response.json()
+            self.access_token = token_data['access_token']
+            
+            # Calculate expiration (default to 1 hour if not provided)
+            expires_in = token_data.get('expires_in', 3600)
+            self.token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+            
+            logger.info("Successfully obtained Copernicus access token")
+            return self.access_token
+            
+        except requests.RequestException as e:
+            logger.error(f"Failed to obtain access token: {str(e)}")
+            raise Exception(f"Authentication failed: {str(e)}")
+    
+    def search_scenes(
+        self,
+        bbox: List[float],  # [min_lon, min_lat, max_lon, max_lat]
+        start_date: date,
+        end_date: date,
+        cloud_cover_max: float = 20.0,
+        product_type: str = "S2MSI2A",
+        limit: int = 100
+    ) -> List[Dict[str, Any]]:
+        """Search for Sentinel-2 scenes.
+        
+        Args:
+            bbox: Bounding box [min_lon, min_lat, max_lon, max_lat]
+            start_date: Start date for search
+            end_date: End date for search
+            cloud_cover_max: Maximum cloud coverage percentage
+            product_type: Product type (default: S2MSI2A for L2A)
+            limit: Maximum number of results
+            
+        Returns:
+            List of scene metadata dictionaries
+        """
+        token = self._get_access_token()
+        
+        # Build search query
+        query = {
+            "collections": ["sentinel-s2-l2a-cogs"],  # L2A COG products
+            "bbox": bbox,
+            "datetime": f"{start_date.isoformat()}/{end_date.isoformat()}",
+            "limit": limit,
+            "query": {
+                "eo:cloud_cover": {"lt": cloud_cover_max}
+            }
+        }
+        
+        try:
+            headers = {
+                'Authorization': f'Bearer {token}',
+                'Content-Type': 'application/json'
+            }
+            
+            # Use STAC search endpoint
+            response = requests.post(
+                f"{self.CATALOG_URL}/search",
+                json=query,
+                headers=headers
+            )
+            response.raise_for_status()
+            
+            results = response.json()
+            scenes = []
+            
+            for feature in results.get('features', []):
+                scene = {
+                    'id': feature['id'],
+                    'sensing_date': feature['properties'].get('datetime', '').split('T')[0],
+                    'cloud_cover': feature['properties'].get('eo:cloud_cover', 0),
+                    'geometry': feature.get('geometry'),
+                    'assets': feature.get('assets', {}),
+                    'links': feature.get('links', [])
+                }
+                scenes.append(scene)
+            
+            logger.info(f"Found {len(scenes)} scenes matching criteria")
+            return scenes
+            
+        except requests.RequestException as e:
+            logger.error(f"Failed to search scenes: {str(e)}")
+            raise Exception(f"Scene search failed: {str(e)}")
+    
+    def download_band(
+        self,
+        scene_id: str,
+        band: str,  # e.g., "B04", "B08"
+        output_path: str
+    ) -> str:
+        """Download a specific band from a scene.
+        
+        Args:
+            scene_id: Sentinel-2 scene ID
+            band: Band name (B02, B03, B04, B08, etc.)
+            output_path: Local path to save the file
+            
+        Returns:
+            Path to downloaded file
+        """
+        token = self._get_access_token()
+        
+        # Get scene metadata first
+        scenes = self.search_scenes(
+            bbox=[-180, -90, 180, 90],  # Dummy bbox, we'll filter by ID
+            start_date=date.today() - timedelta(days=365),
+            end_date=date.today(),
+            limit=1000
+        )
+        
+        scene = next((s for s in scenes if s['id'] == scene_id), None)
+        if not scene:
+            raise ValueError(f"Scene {scene_id} not found")
+        
+        # Find band asset
+        # Sentinel-2 L2A COG assets are typically named like "B04" or "visual"
+        assets = scene.get('assets', {})
+        band_asset = assets.get(band)
+        
+        if not band_asset:
+            # Try alternative naming
+            band_asset = assets.get(f"{band}.tif") or assets.get(f"B{band}")
+        
+        if not band_asset:
+            raise ValueError(f"Band {band} not found in scene {scene_id}")
+        
+        # Get download URL
+        download_url = band_asset.get('href')
+        if not download_url:
+            raise ValueError(f"No download URL for band {band}")
+        
+        # Download file
+        try:
+            headers = {'Authorization': f'Bearer {token}'}
+            
+            response = requests.get(download_url, headers=headers, stream=True)
+            response.raise_for_status()
+            
+            # Ensure output directory exists
+            Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+            
+            # Download with progress
+            total_size = int(response.headers.get('content-length', 0))
+            downloaded = 0
+            
+            with open(output_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+            
+            logger.info(f"Downloaded band {band} from scene {scene_id} to {output_path}")
+            return output_path
+            
+        except requests.RequestException as e:
+            logger.error(f"Failed to download band {band}: {str(e)}")
+            raise Exception(f"Download failed: {str(e)}")
+    
+    def download_scene_bands(
+        self,
+        scene_id: str,
+        bands: List[str],
+        output_dir: str
+    ) -> Dict[str, str]:
+        """Download multiple bands from a scene.
+        
+        Args:
+            scene_id: Sentinel-2 scene ID
+            bands: List of band names to download
+            output_dir: Directory to save bands
+            
+        Returns:
+            Dictionary mapping band names to file paths
+        """
+        band_paths = {}
+        
+        for band in bands:
+            output_path = os.path.join(output_dir, f"{scene_id}_{band}.tif")
+            try:
+                downloaded_path = self.download_band(scene_id, band, output_path)
+                band_paths[band] = downloaded_path
+            except Exception as e:
+                logger.error(f"Failed to download band {band}: {str(e)}")
+                # Continue with other bands
+        
+        return band_paths
+
