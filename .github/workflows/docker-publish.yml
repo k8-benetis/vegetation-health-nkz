@@ -1,21 +1,24 @@
 name: Build and Publish Docker Images
 
 on:
+  # Only build on tags (releases) to avoid constant builds during development
+  # For development, use local builds: ./scripts/build-and-push.sh
   push:
-    branches:
-      - main
-      - develop
     tags:
       - 'v*.*.*'
-  pull_request:
-    branches:
-      - main
-      - develop
+  # Allow manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: true
+        default: 'latest'
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME_BACKEND: ${{ github.repository }}/vegetation-prime-backend
   IMAGE_NAME_FRONTEND: ${{ github.repository }}/vegetation-prime-frontend
+  VERSION: ${{ github.event.inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name) || 'latest' }}
 
 jobs:
   build-backend:
