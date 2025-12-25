@@ -89,6 +89,7 @@ npm run build
 - **Map Library**: Deck.gl with Mapbox overlay
 - **Styling**: Tailwind CSS + `@nekazari/ui-kit`
 - **State Management**: React Context API
+- **Web Server**: Nginx with custom configuration for `/modules/vegetation-prime/*` path handling
 
 ---
 
@@ -114,9 +115,13 @@ vegetation-health-nkz/
 │   │   ├── services/         # API clients
 │   │   └── types/            # TypeScript definitions
 │   ├── Dockerfile
+│   ├── nginx.conf            # Nginx config for /modules/vegetation-prime path
 │   └── vite.config.ts
 ├── k8s/
-│   └── registration.sql       # K8s module registration
+│   ├── backend-deployment.yaml
+│   ├── frontend-deployment.yaml
+│   ├── worker-deployment.yaml
+│   └── registration.sql       # Module registration in marketplace_modules
 ├── LICENSE                    # AGPL-3.0
 ├── manifest.json              # Module metadata
 └── README.md
@@ -216,7 +221,9 @@ npm run typecheck  # TypeScript validation
 
 ### Using Pre-built Images (Recommended)
 
-Images are automatically built and published to **GitHub Container Registry (GHCR)** on every push:
+Images are automatically built and published to **GitHub Container Registry (GHCR)**:
+- **On every push to `main`**: Builds `latest` tag (for continuous deployment)
+- **On release tags (`v*.*.*`)**: Builds versioned tags (e.g., `v1.0.0`, `v1.0`, `v1`)
 
 ```bash
 # Backend
@@ -227,16 +234,16 @@ docker run -d \
   -e MODULE_MANAGEMENT_KEY="your-secret-key" \
   -e CELERY_BROKER_URL="redis://redis:6379/0" \
   -e REDIS_CACHE_URL="redis://redis:6379/1" \
-  ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-backend:latest
+  ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-backend:v1.0.0
 
 # Frontend
 docker run -d \
   --name vegetation-prime-frontend \
   -p 80:80 \
-  ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-frontend:latest
+  ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-frontend:v1.0.0
 ```
 
-**Available tags**: `latest`, `v1.0.0`, `main`, `develop`
+**Available tags**: `latest` (main branch), `v1.0.0` (releases), version tags follow semantic versioning
 
 ### Building and Pushing Locally (With Real-time Logs)
 
@@ -273,12 +280,63 @@ docker-compose up -d
 
 ## Kubernetes Deployment
 
-1. **Register Module**: Execute `k8s/registration.sql` in Core Platform database
-2. **Deploy Backend**: Apply Kubernetes manifests (Core Platform manages secrets)
-3. **Deploy Frontend**: Serve static assets via Nginx or CDN
-4. **Verify**: Check module appears in Nekazari marketplace
+### Prerequisites
 
-**Note**: Environment variables (including `MODULE_MANAGEMENT_KEY`) are automatically injected by the Core Platform's orchestration system.
+- Access to Nekazari Platform Kubernetes cluster
+- `kubectl` configured with cluster access
+- GitHub Container Registry (GHCR) credentials configured as `ghcr-secret` in namespace
+
+### Deployment Steps
+
+1. **Build and Push Images** (if not using CI/CD):
+   ```bash
+   # Build locally
+   docker build -f frontend/Dockerfile -t ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-frontend:v1.0.0 .
+   docker build -f backend/Dockerfile -t ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-backend:v1.0.0 ./backend
+   
+   # Push to GHCR
+   docker push ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-frontend:v1.0.0
+   docker push ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-backend:v1.0.0
+   ```
+
+2. **Register Module**: Execute `k8s/registration.sql` in Core Platform database:
+   ```bash
+   # From the module repository
+   psql $DATABASE_URL -f k8s/registration.sql
+   ```
+
+3. **Deploy Kubernetes Resources**:
+   ```bash
+   # Apply deployments (backend, frontend, worker)
+   kubectl apply -f k8s/backend-deployment.yaml
+   kubectl apply -f k8s/frontend-deployment.yaml
+   kubectl apply -f k8s/worker-deployment.yaml
+   ```
+
+4. **Update Ingress** (in Core Platform repository):
+   - Add route `/api/vegetation` → `vegetation-prime-api-service:8000`
+   - Add route `/modules/vegetation-prime` → `vegetation-prime-frontend-service:80`
+   - Specific routes must come before generic `/modules` route
+
+5. **Verify Deployment**:
+   ```bash
+   # Check pods are running
+   kubectl get pods -n nekazari | grep vegetation-prime
+   
+   # Verify frontend is accessible
+   curl -I https://nekazari.artotxiki.com/modules/vegetation-prime/assets/remoteEntry.js
+   # Should return HTTP 200
+   
+   # Check module appears in marketplace
+   # Access Nekazari Platform → Marketplace → should see "Vegetation Prime"
+   ```
+
+### Important Notes
+
+- **Image Versions**: Deployments use versioned tags (e.g., `v1.0.0`) instead of `latest` for stability
+- **Frontend Nginx Configuration**: The frontend includes `nginx.conf` to properly handle the `/modules/vegetation-prime/*` path prefix from ingress routing
+- **Environment Variables**: Secrets (including `MODULE_MANAGEMENT_KEY`, `DATABASE_URL`, etc.) are managed by Core Platform and injected via ConfigMaps/Secrets
+- **Image Pull Policy**: Set to `Always` to ensure latest images are pulled (consider using specific versions in production)
 
 ---
 
