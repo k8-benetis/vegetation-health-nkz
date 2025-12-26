@@ -38,14 +38,14 @@ export default defineConfig({
           import: false,  // Use global from host (window.ReactRouterDOM)
           shareScope: 'default',
         },
-        // CRITICAL: ui-kit must be shared as singleton because it imports React
-        // When ui-kit is bundled inside the module, it can't access React (which is externalized)
-        // By sharing ui-kit as singleton, it will use React from the host
+        // ui-kit is NOT shared - it's bundled completely inside the module
+        // ui-kit will use React from host via external configuration
+        // This is necessary because Module Federation bundles ui-kit even when singleton: true
+        // if the host doesn't have Module Federation enabled
         '@nekazari/ui-kit': {
-          singleton: true,
+          singleton: false,
           requiredVersion: '^1.0.0',
-          import: false,  // Use from host's shared scope
-          shareScope: 'default',
+          // Bundle ui-kit completely, but it will use React from host via external
         },
         '@nekazari/sdk': {
           singleton: false,
@@ -59,6 +59,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // CRITICAL: Make ui-kit use React from host when bundled
+      // This ensures ui-kit (bundled in module) can access React from window.React
+      'react': 'react',
+      'react-dom': 'react-dom',
     },
   },
   server: {
@@ -81,13 +85,23 @@ export default defineConfig({
     // React must be shared via Module Federation (singleton) to work correctly
     // when module renders inside host's React tree
     rollupOptions: {
-      external: ['react', 'react-dom', 'react-router-dom'],
+      // Externalize React and jsx-runtime so ui-kit (when bundled) can use React from host
+      external: [
+        'react',
+        'react-dom',
+        'react-router-dom',
+        'react/jsx-runtime',
+        'react/jsx-dev-runtime',
+      ],
       output: {
         globals: {
           'react': 'React',
           'react-dom': 'ReactDOM',
           'react-router-dom': 'ReactRouterDOM',
+          'react/jsx-runtime': 'React',
+          'react/jsx-dev-runtime': 'React',
         },
+        format: 'es',
       },
     },
   },
