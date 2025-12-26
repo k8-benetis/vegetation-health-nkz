@@ -5,9 +5,12 @@
 
 import React from 'react';
 import { Leaf, Calendar } from 'lucide-react';
-import { Card, Select } from '@nekazari/ui-kit';
+import { getUIKit } from '../../utils/ui-kit-loader';
 import { useVegetationContext } from '../../services/vegetationContext';
 import type { VegetationIndexType } from '../../types';
+
+// Get ui-kit components from host
+const { Card, Select } = getUIKit();
 
 interface VegetationLayerControlProps {
   // Slot integration props (provided by host)

@@ -5,10 +5,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { Calendar, Cloud, CloudOff, Loader2 } from 'lucide-react';
-import { Card } from '@nekazari/ui-kit';
+import { getUIKit } from '../../utils/ui-kit-loader';
 import { useVegetationContext } from '../../services/vegetationContext';
 import { useVegetationApi } from '../../services/api';
 import type { VegetationScene } from '../../types';
+
+// Get ui-kit components from host
+const { Card } = getUIKit();
 
 interface TimelineWidgetProps {
   entityId?: string;

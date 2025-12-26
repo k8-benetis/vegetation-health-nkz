@@ -38,15 +38,9 @@ export default defineConfig({
           import: false,  // Use global from host (window.ReactRouterDOM)
           shareScope: 'default',
         },
-        // ui-kit is NOT shared - it's bundled completely inside the module
-        // ui-kit will use React from host via external configuration
-        // This is necessary because Module Federation bundles ui-kit even when singleton: true
-        // if the host doesn't have Module Federation enabled
-        '@nekazari/ui-kit': {
-          singleton: false,
-          requiredVersion: '^1.0.0',
-          // Bundle ui-kit completely, but it will use React from host via external
-        },
+        // ui-kit is NOT in shared - module loads it dynamically from host at runtime
+        // This avoids bundling ui-kit and React conflicts
+        // Module uses getUIKit() utility to load from window.__nekazariUIKit
         '@nekazari/sdk': {
           singleton: false,
           requiredVersion: '^1.0.0',

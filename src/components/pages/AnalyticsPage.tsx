@@ -4,9 +4,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, Calendar, Filter } from 'lucide-react';
-import { Card, Select } from '@nekazari/ui-kit';
+import { getUIKit } from '../../utils/ui-kit-loader';
 import { useVegetationApi } from '../../services/api';
 import type { VegetationJob } from '../../types';
+
+// Get ui-kit components from host
+const { Card, Select } = getUIKit();
 
 export const AnalyticsPage: React.FC = () => {
   const api = useVegetationApi();

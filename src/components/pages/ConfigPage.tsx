@@ -4,9 +4,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { Settings, Key, Database, Cloud, Save, Clock, CheckCircle, XCircle, Loader2, TrendingUp } from 'lucide-react';
-import { Card, Button, Input, Select } from '@nekazari/ui-kit';
+import { getUIKit } from '../../utils/ui-kit-loader';
 import { useVegetationApi } from '../../services/api';
 import type { VegetationConfig, VegetationIndexType, VegetationJob } from '../../types';
+
+// Get ui-kit components from host
+const { Card, Button, Input, Select } = getUIKit();
 
 export const ConfigPage: React.FC = () => {
   const api = useVegetationApi();
@@ -117,29 +120,35 @@ export const ConfigPage: React.FC = () => {
             <div className="space-y-4">
               {/* Volume Usage */}
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-700">Monthly Hectares</span>
-                  <span className="text-sm text-gray-600">
-                    {usage.volume.used_ha.toFixed(2)} / {usage.volume.limit_ha.toFixed(2)} Ha
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className={`h-3 rounded-full transition-all ${
-                      (usage.volume.used_ha / usage.volume.limit_ha) >= 0.9
-                        ? 'bg-red-500'
-                        : (usage.volume.used_ha / usage.volume.limit_ha) >= 0.75
-                        ? 'bg-yellow-500'
-                        : 'bg-green-500'
-                    }`}
-                    style={{
-                      width: `${Math.min((usage.volume.used_ha / usage.volume.limit_ha) * 100, 100)}%`,
-                    }}
-                  />
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {((usage.volume.limit_ha - usage.volume.used_ha) / usage.volume.limit_ha * 100).toFixed(1)}% remaining this month
-                </p>
+                {usage.volume ? (
+                <>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-700">Monthly Hectares</span>
+                    <span className="text-sm text-gray-600">
+                      {usage.volume.used_ha.toFixed(2)} / {usage.volume.limit_ha.toFixed(2)} Ha
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div
+                      className={`h-3 rounded-full transition-all ${
+                        (usage.volume.used_ha / usage.volume.limit_ha) >= 0.9
+                          ? 'bg-red-500'
+                          : (usage.volume.used_ha / usage.volume.limit_ha) >= 0.75
+                          ? 'bg-yellow-500'
+                          : 'bg-green-500'
+                      }`}
+                      style={{
+                        width: `${Math.min((usage.volume.used_ha / usage.volume.limit_ha) * 100, 100)}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {((usage.volume.limit_ha - usage.volume.used_ha) / usage.volume.limit_ha * 100).toFixed(1)}% remaining this month
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500">Usage data not available</p>
+              )}
               </div>
 
               {/* Frequency Usage */}
