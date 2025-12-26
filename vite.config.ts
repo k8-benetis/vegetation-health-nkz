@@ -38,10 +38,14 @@ export default defineConfig({
           import: false,  // Use global from host (window.ReactRouterDOM)
           shareScope: 'default',
         },
-        // Platform-specific packages can be bundled (lightweight and version-stable)
+        // CRITICAL: ui-kit must be shared as singleton because it imports React
+        // When ui-kit is bundled inside the module, it can't access React (which is externalized)
+        // By sharing ui-kit as singleton, it will use React from the host
         '@nekazari/ui-kit': {
-          singleton: false,
+          singleton: true,
           requiredVersion: '^1.0.0',
+          import: false,  // Use from host's shared scope
+          shareScope: 'default',
         },
         '@nekazari/sdk': {
           singleton: false,
