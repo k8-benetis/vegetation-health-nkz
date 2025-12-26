@@ -125,10 +125,34 @@ export class VegetationApiClient {
 
 // Hook for using API client
 export function useVegetationApi(): VegetationApiClient {
-  const { getToken, tenantId } = useAuth();
-  
-  return new VegetationApiClient(
-    () => getToken(),
-    () => tenantId
-  );
+  try {
+    const auth = useAuth();
+    if (!auth) {
+      console.warn('[useVegetationApi] useAuth returned undefined, using fallback');
+      return new VegetationApiClient(
+        () => undefined,
+        () => undefined
+      );
+    }
+    
+    const { getToken, tenantId } = auth;
+    
+    return new VegetationApiClient(
+      () => getToken(),
+      () => tenantId
+    );
+  } catch (error) {
+    console.error('[useVegetationApi] Error accessing useAuth:', error);
+    // Return a client with fallback functions that will fail gracefully
+    return new VegetationApiClient(
+      () => {
+        console.warn('[useVegetationApi] getToken not available');
+        return undefined;
+      },
+      () => {
+        console.warn('[useVegetationApi] tenantId not available');
+        return undefined;
+      }
+    );
+  }
 }
