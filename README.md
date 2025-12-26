@@ -62,12 +62,31 @@ npm run build
 
 ### Initial Configuration
 
-1. **Access Config Page**: Navigate to `/vegetation/config` in Nekazari Platform
-2. **Configure Copernicus Credentials**:
+1. **Install Module for Tenant** (REQUIRED):
+   ```sql
+   -- Replace 'YOUR_TENANT_ID' with actual tenant ID
+   INSERT INTO tenant_installed_modules (tenant_id, module_id, is_enabled, installed_by)
+   VALUES ('YOUR_TENANT_ID', 'vegetation-prime', true, 'admin')
+   ON CONFLICT (tenant_id, module_id) DO UPDATE SET is_enabled = true;
+   ```
+   
+   **Or use the verification script:**
+   ```bash
+   # Edit k8s/verify-installation.sql and set tenant_id
+   psql $DATABASE_URL -f k8s/verify-installation.sql
+   ```
+
+2. **Access Config Page**: Navigate to `/vegetation` in Nekazari Platform
+3. **Configure Copernicus Credentials**:
    - Client ID
    - Client Secret
    - Default Index Type (NDVI, EVI, etc.)
-3. **Verify Jobs**: Check "Recent Download Jobs" table for download status
+4. **Verify Jobs**: Check "Recent Download Jobs" table for download status
+
+**⚠️ IMPORTANT**: If the module redirects to the landing page, verify:
+- Module is registered in `marketplace_modules` with `is_active = true`
+- Module is installed in `tenant_installed_modules` with `is_enabled = true` for your tenant
+- Check browser console for module loading errors
 
 ---
 
