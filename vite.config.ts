@@ -38,9 +38,14 @@ export default defineConfig({
           import: false,  // Use global from host (window.ReactRouterDOM)
           shareScope: 'default',
         },
-        // ui-kit is NOT in shared - module loads it dynamically from host at runtime
-        // This avoids bundling ui-kit and React conflicts
-        // Module uses getUIKit() utility to load from window.__nekazariUIKit
+        // ui-kit is shared from host via globalThis.__federation_shared__
+        // Host populates this in main.tsx before modules load
+        '@nekazari/ui-kit': {
+          singleton: true,
+          requiredVersion: '^1.0.0',
+          import: false,  // Use shared from host (globalThis.__federation_shared__)
+          shareScope: 'default',
+        },
         '@nekazari/sdk': {
           singleton: false,
           requiredVersion: '^1.0.0',

@@ -5,19 +5,18 @@
 
 import React, { useEffect, useState } from 'react';
 import { Calendar, Cloud, CloudOff, Loader2 } from 'lucide-react';
-import { getUIKit } from '../../utils/ui-kit-loader';
+import { useUIKit } from '../../hooks/useUIKit';
 import { useVegetationContext } from '../../services/vegetationContext';
 import { useVegetationApi } from '../../services/api';
 import type { VegetationScene } from '../../types';
-
-// Get ui-kit components from host
-const { Card } = getUIKit();
 
 interface TimelineWidgetProps {
   entityId?: string;
 }
 
 export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
+  // Get UI components safely from Host
+  const { Card } = useUIKit();
   const {
     selectedIndex,
     selectedDate,

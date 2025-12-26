@@ -4,14 +4,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, Calendar, Filter } from 'lucide-react';
-import { getUIKit } from '../../utils/ui-kit-loader';
+import { useUIKit } from '../../hooks/useUIKit';
+import { Select } from '../ui/Select';
 import { useVegetationApi } from '../../services/api';
 import type { VegetationJob } from '../../types';
 
-// Get ui-kit components from host
-const { Card, Select } = getUIKit();
-
 export const AnalyticsPage: React.FC = () => {
+  // Get UI components safely from Host
+  const { Card } = useUIKit();
   const api = useVegetationApi();
   const [jobs, setJobs] = useState<VegetationJob[]>([]);
   const [loading, setLoading] = useState(true);

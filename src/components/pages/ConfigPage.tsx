@@ -4,14 +4,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { Settings, Key, Database, Cloud, Save, Clock, CheckCircle, XCircle, Loader2, TrendingUp } from 'lucide-react';
-import { getUIKit } from '../../utils/ui-kit-loader';
+import { useUIKit } from '../../hooks/useUIKit';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 import { useVegetationApi } from '../../services/api';
 import type { VegetationConfig, VegetationIndexType, VegetationJob } from '../../types';
 
-// Get ui-kit components from host
-const { Card, Button, Input, Select } = getUIKit();
-
 export const ConfigPage: React.FC = () => {
+  // Get UI components safely from Host
+  const { Card, Button } = useUIKit();
   const api = useVegetationApi();
   const [config, setConfig] = useState<Partial<VegetationConfig>>({});
   const [loading, setLoading] = useState(true);
@@ -22,8 +23,8 @@ export const ConfigPage: React.FC = () => {
   const [jobsLoading, setJobsLoading] = useState(false);
   const [usage, setUsage] = useState<{
     plan: string;
-    volume: { used_ha: number; limit_ha: number };
-    frequency: { used_jobs_today: number; limit_jobs_today: number };
+    volume?: { used_ha: number; limit_ha: number };
+    frequency?: { used_jobs_today: number; limit_jobs_today: number };
   } | null>(null);
 
   useEffect(() => {
