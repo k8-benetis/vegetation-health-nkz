@@ -97,6 +97,199 @@ npm run build
 
 ---
 
+## ⚠️ CRITICAL REQUIREMENTS FOR EXTERNAL MODULES
+
+**This section documents critical requirements learned from production deployment. Follow these exactly to avoid common pitfalls.**
+
+### 1. Routing - DO NOT USE React Router Internally
+
+**❌ WRONG:**
+```tsx
+import { Routes, Route, Navigate } from 'react-router-dom';
+
+const MyModule: React.FC = () => {
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/config" replace />} />
+      <Route path="/config" element={<ConfigPage />} />
+    </Routes>
+  );
+};
+```
+
+**✅ CORRECT:**
+```tsx
+import { useState } from 'react';
+
+type TabType = 'config' | 'analytics';
+
+const MyModule: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<TabType>('config');
+  
+  return (
+    <div>
+      {/* Tab navigation */}
+      <button onClick={() => setActiveTab('config')}>Config</button>
+      <button onClick={() => setActiveTab('analytics')}>Analytics</button>
+      
+      {/* Tab content */}
+      {activeTab === 'config' && <ConfigPage />}
+      {activeTab === 'analytics' && <AnalyticsPage />}
+    </div>
+  );
+};
+```
+
+**Why:** The host already provides a `BrowserRouter`. Using `<Routes>`/`<Route>` inside your module creates routing conflicts that cause redirects to the landing page. Use **state-based navigation** (tabs, conditional rendering) instead.
+
+### 2. Module Federation Configuration
+
+**Required in `vite.config.ts`:**
+
+```typescript
+federation({
+  name: 'your_module_scope',  // Must match registration.sql scope
+  filename: 'remoteEntry.js',
+  exposes: {
+    './App': './src/App.tsx',  // Must match registration.sql exposed_module
+  },
+  shared: {
+    'react': {
+      singleton: true,
+      requiredVersion: '^18.3.1',
+      import: false,  // CRITICAL: Use window.React from host
+      shareScope: 'default',
+    },
+    'react-dom': {
+      singleton: true,
+      requiredVersion: '^18.3.1',
+      import: false,  // CRITICAL: Use window.ReactDOM from host
+      shareScope: 'default',
+    },
+    'react-router-dom': {
+      singleton: true,
+      requiredVersion: '^6.26.0',
+      import: false,  // CRITICAL: Use window.ReactRouterDOM from host
+      shareScope: 'default',
+    },
+  },
+})
+```
+
+**Required in `build.rollupOptions`:**
+
+```typescript
+build: {
+  rollupOptions: {
+    external: ['react', 'react-dom', 'react-router-dom'],
+    output: {
+      globals: {
+        'react': 'React',
+        'react-dom': 'ReactDOM',
+        'react-router-dom': 'ReactRouterDOM',
+      },
+    },
+  },
+}
+```
+
+### 3. Export Format
+
+**✅ REQUIRED:**
+```tsx
+// src/App.tsx
+const MyModule: React.FC = () => {
+  return <div>My Module Content</div>;
+};
+
+// CRITICAL: Export as default - required for Module Federation
+export default MyModule;
+```
+
+### 4. Database Registration
+
+**In `k8s/registration.sql`:**
+
+```sql
+INSERT INTO marketplace_modules (
+    id,
+    name,
+    display_name,
+    remote_entry_url,
+    scope,                    -- Must match vite.config.ts federation.name
+    exposed_module,           -- Must match vite.config.ts exposes key (e.g., './App')
+    route_path,
+    is_local,
+    is_active,
+    -- ... other fields
+) VALUES (
+    'your-module-id',
+    'your-module-name',
+    'Your Module Display Name',
+    'https://nekazari.artotxiki.com/modules/your-module-name/assets/remoteEntry.js',
+    'your_module_scope',      -- Must match vite.config.ts
+    './App',                  -- Must match vite.config.ts exposes key
+    '/your-module-route',
+    false,                    -- External module
+    true,                     -- Active
+    -- ... other values
+);
+```
+
+### 5. CSS Isolation
+
+**✅ DO:**
+- Use Tailwind CSS with scoped classes
+- Use `w-full` instead of `min-h-screen` to avoid layout conflicts
+- Keep styles component-scoped
+
+**❌ DON'T:**
+- Use global CSS that affects the host
+- Use `!important` unless absolutely necessary
+- Modify `body` or `html` styles
+
+### 6. Nginx Configuration
+
+**Required in `frontend/nginx.conf`:**
+
+```nginx
+location ~ ^/modules/your-module-name/(.*)$ {
+    rewrite ^/modules/your-module-name/(.*)$ /$1 break;
+    root /usr/share/nginx/html;
+    try_files $uri $uri/ /index.html;
+}
+
+# CORS headers for Module Federation
+add_header Access-Control-Allow-Origin * always;
+add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+```
+
+### 7. Common Pitfalls
+
+1. **Routing conflicts**: Never use React Router inside your module
+2. **React singleton**: Always use `import: false` for React shared modules
+3. **Export format**: Always use `export default` for the main component
+4. **Scope mismatch**: Ensure `vite.config.ts` scope matches `registration.sql` scope
+5. **Exposed module mismatch**: Ensure `vite.config.ts` exposes key matches `registration.sql` exposed_module
+6. **CSS conflicts**: Avoid global styles that affect the host
+
+### 8. Testing Checklist
+
+Before deploying, verify:
+
+- [ ] Module builds without errors: `npm run build`
+- [ ] `remoteEntry.js` is generated in `dist/assets/`
+- [ ] No React Router usage in module code
+- [ ] `export default` is used for main component
+- [ ] `vite.config.ts` scope matches `registration.sql` scope
+- [ ] `vite.config.ts` exposes key matches `registration.sql` exposed_module
+- [ ] Nginx config has correct path rewriting
+- [ ] CSS doesn't use global styles that affect host
+
+---
+
+---
+
 ## Project Structure
 
 ```
