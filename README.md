@@ -21,6 +21,7 @@
 
 - **Multi-spectral Index Calculation**: NDVI, EVI, SAVI, GNDVI, NDRE, and custom formulas
 - **Sentinel-2 L2A Integration**: Automated scene download and processing via Copernicus Data Space Ecosystem
+- **Global Scene Cache**: Hybrid caching system to maximize quota savings with shared Copernicus credentials
 - **Time Series Analysis**: Historical vegetation trend visualization with interactive timelines
 - **High-Performance Visualization**: Deck.gl-based raster rendering with lazy tile caching
 - **Asynchronous Processing**: Celery-based job queue for long-running tasks
@@ -103,7 +104,8 @@ npm run build
 - **Framework**: FastAPI with async support
 - **Database**: PostgreSQL with PostGIS extension
 - **Task Queue**: Celery + Redis
-- **Storage**: S3/MinIO abstraction layer
+- **Storage**: S3/MinIO abstraction layer with hybrid global cache system
+- **Global Cache**: Shared scene storage to maximize Copernicus quota savings
 - **Authentication**: JWT (RS256) with Keycloak compatibility
 - **Migrations**: PostgreSQL Advisory Locks for safe concurrent migrations
 
@@ -626,8 +628,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Documentation
 
 - **[User Manual](docs/USER_MANUAL.md)**: Complete user guide covering all features, pages, and workflows
-- **[Quick Reference](docs/QUICK_REFERENCE.md)**: Quick reference guide for common tasks
-- **[Testing Guide](docs/TESTING_GUIDE.md)**: Guide for testing and development
+- **[Global Cache System](docs/GLOBAL_CACHE_SYSTEM.md)**: Hybrid caching architecture for quota optimization
+- **[Platform Credentials](docs/PLATFORM_CREDENTIALS.md)**: Centralized credential management
 - **[Build Strategy](docs/BUILD_STRATEGY.md)**: Docker image build and deployment strategy
 
 ---

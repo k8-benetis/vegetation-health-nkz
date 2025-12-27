@@ -13,6 +13,16 @@ from botocore.exceptions import ClientError
 from botocore.config import Config
 
 
+def get_global_bucket_name() -> str:
+    """
+    Get the name of the global bucket for shared scene storage.
+    
+    Returns:
+        Global bucket name: vegetation-prime-global
+    """
+    return 'vegetation-prime-global'
+
+
 def generate_tenant_bucket_name(tenant_id: str) -> str:
     """
     Generate a secure bucket name based on tenant_id.
@@ -123,6 +133,21 @@ class StorageService(ABC):
             
         Returns:
             Presigned URL
+        """
+        pass
+    
+    @abstractmethod
+    def copy_file(self, source_path: str, dest_path: str, source_bucket: Optional[str] = None, dest_bucket: Optional[str] = None) -> str:
+        """Copy a file from one location to another (can be same or different buckets).
+        
+        Args:
+            source_path: Source file path
+            dest_path: Destination file path
+            source_bucket: Optional source bucket name
+            dest_bucket: Optional destination bucket name
+            
+        Returns:
+            Full URL/path to copied file
         """
         pass
 
@@ -265,6 +290,34 @@ class S3StorageService(StorageService):
             else:
                 raise
     
+    def copy_file(self, source_path: str, dest_path: str, source_bucket: Optional[str] = None, dest_bucket: Optional[str] = None) -> str:
+        """Copy file from source bucket to destination bucket (S3 copy operation)."""
+        source_bucket_name = self._get_bucket(source_bucket)
+        dest_bucket_name = self._get_bucket(dest_bucket)
+        
+        try:
+            # Ensure destination bucket exists
+            self._ensure_bucket_exists(dest_bucket_name)
+            
+            # Use S3 copy operation (server-side, no download/upload)
+            copy_source = {
+                'Bucket': source_bucket_name,
+                'Key': source_path
+            }
+            
+            self.client.copy_object(
+                CopySource=copy_source,
+                Bucket=dest_bucket_name,
+                Key=dest_path,
+                ContentType=self._get_content_type(dest_path)
+            )
+            
+            return f"s3://{dest_bucket_name}/{dest_path}"
+        except ClientError as e:
+            if e.response['Error']['Code'] == '404':
+                raise FileNotFoundError(f"Source file not found: {source_path}")
+            raise Exception(f"Failed to copy file in S3: {str(e)}")
+    
     def _get_content_type(self, file_path: str) -> str:
         """Get content type based on file extension."""
         ext = Path(file_path).suffix.lower()
@@ -330,6 +383,21 @@ class LocalStorageService(StorageService):
         """Check if file exists in local storage."""
         remote_full_path = self.base_path / (bucket or '') / remote_path
         return remote_full_path.exists()
+    
+    def copy_file(self, source_path: str, dest_path: str, source_bucket: Optional[str] = None, dest_bucket: Optional[str] = None) -> str:
+        """Copy file from source location to destination (local filesystem)."""
+        source_full_path = self.base_path / (source_bucket or '') / source_path
+        dest_full_path = self.base_path / (dest_bucket or '') / dest_path
+        
+        if not source_full_path.exists():
+            raise FileNotFoundError(f"Source file not found: {source_path}")
+        
+        dest_full_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        import shutil
+        shutil.copy2(source_full_path, dest_full_path)
+        
+        return str(dest_full_path)
     
     def get_file_url(self, remote_path: str, bucket: Optional[str] = None, expires_in: int = 3600) -> str:
         """Get file path (no presigning for local storage)."""

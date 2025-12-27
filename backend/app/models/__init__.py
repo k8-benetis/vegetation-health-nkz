@@ -8,6 +8,7 @@ from .jobs import VegetationJob
 from .scenes import VegetationScene
 from .indices import VegetationIndexCache, VegetationCustomFormula
 from .limits import VegetationPlanLimits, VegetationUsageStats, VegetationUsageLog
+from .global_scene_cache import GlobalSceneCache
 
 __all__ = [
     'BaseModel',
@@ -20,5 +21,6 @@ __all__ = [
     'VegetationPlanLimits',
     'VegetationUsageStats',
     'VegetationUsageLog',
+    'GlobalSceneCache',
 ]
 

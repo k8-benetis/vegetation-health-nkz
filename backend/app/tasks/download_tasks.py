@@ -11,8 +11,8 @@ import os
 from pathlib import Path
 
 from app.celery_app import celery_app
-from app.models import VegetationJob, VegetationScene, VegetationConfig
-from app.services.storage import create_storage_service, generate_tenant_bucket_name
+from app.models import VegetationJob, VegetationScene, VegetationConfig, GlobalSceneCache
+from app.services.storage import create_storage_service, generate_tenant_bucket_name, get_global_bucket_name
 from app.services.copernicus_client import CopernicusDataSpaceClient
 from app.services.platform_credentials import get_copernicus_credentials_with_fallback
 from app.database import get_db_session
@@ -120,45 +120,160 @@ def download_sentinel2_scene(self, job_id: str, tenant_id: str, parameters: Dict
             'NDRE': ['B8A', 'B08'],
         }.get(config.default_index_type, ['B04', 'B08'])
         
-        # Create temporary directory for downloads
-        temp_dir = Path(f"/tmp/vegetation_downloads/{tenant_id}/{job_id}")
-        temp_dir.mkdir(parents=True, exist_ok=True)
+        # =============================================================================
+        # HYBRID CACHE LOGIC: Check global cache first, then download if needed
+        # =============================================================================
+        global_bucket_name = get_global_bucket_name()
+        tenant_bucket_name = generate_tenant_bucket_name(tenant_id)
         
-        # Download bands
-        self.update_state(state='PROGRESS', meta={'progress': 40, 'message': 'Downloading bands'})
-        band_paths = copernicus_client.download_scene_bands(
-            scene_id=scene_id,
-            bands=required_bands,
-            output_dir=str(temp_dir)
-        )
-        
-        if not band_paths:
-            raise ValueError("Failed to download any bands")
-        
-        self.update_state(state='PROGRESS', meta={'progress': 70, 'message': 'Uploading to storage'})
-        
-        # Generate bucket name automatically based on tenant_id (security: prevents bucket name conflicts)
-        bucket_name = generate_tenant_bucket_name(tenant_id)
-        
-        # Get storage service
-        storage = create_storage_service(
+        # Get storage services (global and tenant)
+        global_storage = create_storage_service(
             storage_type=config.storage_type,
-            default_bucket=bucket_name
+            default_bucket=global_bucket_name
+        )
+        tenant_storage = create_storage_service(
+            storage_type=config.storage_type,
+            default_bucket=tenant_bucket_name
         )
         
-        # Upload bands to storage
-        storage_band_paths = {}
-        for band, local_path in band_paths.items():
-            remote_path = f"{config.storage_path}scenes/{scene_id}/{band}.tif"
-            storage.upload_file(local_path, remote_path, bucket_name)
-            storage_band_paths[band] = remote_path
-            
-            # Clean up local file
-            Path(local_path).unlink()
+        # Step 1: Check if scene exists in global cache
+        self.update_state(state='PROGRESS', meta={'progress': 35, 'message': 'Checking global cache'})
+        global_cache_entry = db.query(GlobalSceneCache).filter(
+            GlobalSceneCache.scene_id == scene_id,
+            GlobalSceneCache.is_valid == True
+        ).first()
         
+        scene_downloaded_from_copernicus = False
+        all_bands_exist = False
+        
+        if global_cache_entry:
+            # Step 2: Scene exists in cache - verify files exist and copy to tenant bucket
+            logger.info(f"Scene {scene_id} found in global cache - reusing (download_count: {global_cache_entry.download_count})")
+            self.update_state(state='PROGRESS', meta={'progress': 50, 'message': 'Copying from global cache'})
+            
+            # Verify all required bands exist in global bucket
+            all_bands_exist = True
+            for band in required_bands:
+                global_band_path = global_cache_entry.get_band_path(band)
+                if not global_band_path or not global_storage.file_exists(global_band_path, global_bucket_name):
+                    logger.warning(f"Band {band} missing in global cache for scene {scene_id}")
+                    all_bands_exist = False
+                    break
+            
+            if all_bands_exist:
+                # Copy bands from global bucket to tenant bucket
+                storage_band_paths = {}
+                for band in required_bands:
+                    global_band_path = global_cache_entry.get_band_path(band)
+                    tenant_band_path = f"{config.storage_path}scenes/{scene_id}/{band}.tif"
+                    
+                    # Copy file from global to tenant bucket
+                    tenant_storage.copy_file(
+                        source_path=global_band_path,
+                        dest_path=tenant_band_path,
+                        source_bucket=global_bucket_name,
+                        dest_bucket=tenant_bucket_name
+                    )
+                    storage_band_paths[band] = tenant_band_path
+                    logger.info(f"Copied band {band} from global cache to tenant bucket")
+                
+                # Increment reuse counter
+                global_cache_entry.increment_download_count()
+                db.commit()
+                
+                logger.info(f"Scene {scene_id} reused from cache (new download_count: {global_cache_entry.download_count})")
+            else:
+                # Some bands missing - mark as invalid and download fresh
+                logger.warning(f"Scene {scene_id} in cache but some bands missing - marking invalid and downloading fresh")
+                global_cache_entry.is_valid = False
+                db.commit()
+                global_cache_entry = None  # Force download below
+        
+        if not global_cache_entry or not all_bands_exist:
+            # Step 3: Scene not in cache or invalid - download from Copernicus
+            logger.info(f"Scene {scene_id} not in cache - downloading from Copernicus")
+            self.update_state(state='PROGRESS', meta={'progress': 40, 'message': 'Downloading from Copernicus'})
+            scene_downloaded_from_copernicus = True
+            
+            # Create temporary directory for downloads
+            temp_dir = Path(f"/tmp/vegetation_downloads/{tenant_id}/{job_id}")
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Download bands from Copernicus
+            band_paths = copernicus_client.download_scene_bands(
+                scene_id=scene_id,
+                bands=required_bands,
+                output_dir=str(temp_dir)
+            )
+            
+            if not band_paths:
+                raise ValueError("Failed to download any bands")
+            
+            # Upload to global bucket first (for future reuse)
+            self.update_state(state='PROGRESS', meta={'progress': 60, 'message': 'Uploading to global cache'})
+            global_band_paths = {}
+            for band, local_path in band_paths.items():
+                global_band_path = f"scenes/{scene_id}/{band}.tif"
+                global_storage.upload_file(local_path, global_band_path, global_bucket_name)
+                global_band_paths[band] = global_band_path
+                logger.info(f"Uploaded band {band} to global cache")
+            
+            # Create or update global cache entry
+            global_cache_entry = db.query(GlobalSceneCache).filter(
+                GlobalSceneCache.scene_id == scene_id
+            ).first()
+            
+            if global_cache_entry:
+                # Update existing entry (was marked invalid)
+                global_cache_entry.is_valid = True
+                global_cache_entry.bands = global_band_paths
+                global_cache_entry.storage_path = f"scenes/{scene_id}/"
+                global_cache_entry.storage_bucket = global_bucket_name
+                global_cache_entry.cloud_coverage = str(best_scene['cloud_cover'])
+                global_cache_entry.sensing_date = date.fromisoformat(best_scene['sensing_date'])
+            else:
+                # Create new cache entry
+                global_cache_entry = GlobalSceneCache(
+                    scene_id=scene_id,
+                    product_type='S2MSI2A',
+                    platform='Sentinel-2',
+                    sensing_date=date.fromisoformat(best_scene['sensing_date']),
+                    storage_path=f"scenes/{scene_id}/",
+                    storage_bucket=global_bucket_name,
+                    bands=global_band_paths,
+                    cloud_coverage=str(best_scene['cloud_cover']),
+                    download_count=0,
+                    is_valid=True
+                )
+                db.add(global_cache_entry)
+            
+            db.commit()
+            logger.info(f"Scene {scene_id} added to global cache")
+            
+            # Copy from global bucket to tenant bucket
+            self.update_state(state='PROGRESS', meta={'progress': 75, 'message': 'Copying to tenant bucket'})
+            storage_band_paths = {}
+            for band in required_bands:
+                global_band_path = global_band_paths[band]
+                tenant_band_path = f"{config.storage_path}scenes/{scene_id}/{band}.tif"
+                
+                # Copy file from global to tenant bucket
+                tenant_storage.copy_file(
+                    source_path=global_band_path,
+                    dest_path=tenant_band_path,
+                    source_bucket=global_bucket_name,
+                    dest_bucket=tenant_bucket_name
+                )
+                storage_band_paths[band] = tenant_band_path
+                logger.info(f"Copied band {band} to tenant bucket")
+            
+            # Clean up local files
+            import shutil
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        
+        # Step 4: Create tenant scene record
         self.update_state(state='PROGRESS', meta={'progress': 90, 'message': 'Creating scene record'})
         
-        # Create scene record
         scene = VegetationScene(
             tenant_id=tenant_id,
             scene_id=scene_id,
@@ -166,7 +281,7 @@ def download_sentinel2_scene(self, job_id: str, tenant_id: str, parameters: Dict
             footprint=None,  # TODO: Convert geometry to PostGIS
             cloud_coverage=str(best_scene['cloud_cover']),
             storage_path=f"{config.storage_path}scenes/{scene_id}/",
-            storage_bucket=bucket_name,  # Auto-generated from tenant_id
+            storage_bucket=tenant_bucket_name,
             bands=storage_band_paths,
             job_id=job.id
         )
@@ -174,16 +289,14 @@ def download_sentinel2_scene(self, job_id: str, tenant_id: str, parameters: Dict
         db.add(scene)
         db.commit()
         
-        # Clean up temp directory
-        import shutil
-        shutil.rmtree(temp_dir, ignore_errors=True)
-        
         # Mark job as completed
+        cache_status = 'reused' if not scene_downloaded_from_copernicus else 'downloaded'
         job.mark_completed({
             'scene_id': str(scene.id),
             'scene_product_id': scene_id,
-            'bands_downloaded': list(band_paths.keys()),
-            'message': 'Scene downloaded successfully'
+            'bands_downloaded': required_bands,
+            'cache_status': cache_status,
+            'message': f'Scene {cache_status} successfully'
         })
         db.commit()
         
