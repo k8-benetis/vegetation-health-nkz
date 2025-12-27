@@ -41,6 +41,14 @@ export default defineConfig({
           import: false,  // Use global from host (window.ReactRouterDOM)
           shareScope: 'default',
         },
+        // react/jsx-runtime must be bundled (not externalized) because Module Federation
+        // cannot resolve it from shared scope. We'll create a polyfill that uses React.createElement
+        'react/jsx-runtime': {
+          singleton: false,
+          requiredVersion: '^18.3.1',
+          import: true,  // Bundle it - we'll polyfill it to use window.React.createElement
+          shareScope: 'default',
+        },
         // ui-kit is shared from host via globalThis.__federation_shared__
         // Host populates this in main.tsx before modules load
         '@nekazari/ui-kit': {
@@ -65,6 +73,9 @@ export default defineConfig({
       // This ensures ui-kit (bundled in module) can access React from window.React
       'react': 'react',
       'react-dom': 'react-dom',
+      // Force react/jsx-runtime to be resolved from react package (will be bundled)
+      'react/jsx-runtime': 'react/jsx-runtime',
+      'react/jsx-dev-runtime': 'react/jsx-dev-runtime',
     },
   },
   server: {
