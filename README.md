@@ -628,9 +628,23 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Documentation
 
 - **[User Manual](docs/USER_MANUAL.md)**: Complete user guide covering all features, pages, and workflows
-- **[Global Cache System](docs/GLOBAL_CACHE_SYSTEM.md)**: Hybrid caching architecture for quota optimization
+- **[Global Cache System](docs/GLOBAL_CACHE_SYSTEM.md)**: Hybrid caching architecture for quota optimization (includes migration instructions)
 - **[Platform Credentials](docs/PLATFORM_CREDENTIALS.md)**: Centralized credential management
 - **[Build Strategy](docs/BUILD_STRATEGY.md)**: Docker image build and deployment strategy
+
+### Database Migrations
+
+After deploying a new version, ensure all migrations are applied:
+
+```bash
+# Option 1: Using migration script (recommended)
+kubectl exec -it <backend-pod> -n nekazari -- python /app/scripts/run_migrations.py
+
+# Option 2: Manual execution
+kubectl exec -it <backend-pod> -n nekazari -- psql $DATABASE_URL -f /app/migrations/003_create_global_scene_cache.sql
+```
+
+See [Global Cache System Documentation](docs/GLOBAL_CACHE_SYSTEM.md#migration) for detailed migration instructions.
 
 ---
 
