@@ -6,7 +6,10 @@ import path from 'path';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    react(),
+    react({
+      // Use classic JSX runtime to avoid react/jsx-runtime dependency issues with Module Federation
+      jsxRuntime: 'classic',
+    }),
     federation({
       name: 'vegetation_prime_module',
       filename: 'remoteEntry.js',
