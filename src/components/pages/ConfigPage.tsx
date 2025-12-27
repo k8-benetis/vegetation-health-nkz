@@ -44,10 +44,12 @@ export const ConfigPage: React.FC = () => {
   const loadCredentialsStatus = async () => {
     try {
       setCredentialsLoading(true);
+      console.log('[ConfigPage] Loading credentials status...');
       const status = await api.getCredentialsStatus();
+      console.log('[ConfigPage] Credentials status received:', status);
       setCredentialsStatus(status);
     } catch (err) {
-      console.error('Error loading credentials status:', err);
+      console.error('[ConfigPage] Error loading credentials status:', err);
       setCredentialsStatus({
         available: false,
         source: null,
