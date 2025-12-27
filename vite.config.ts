@@ -3,37 +3,53 @@ import react from '@vitejs/plugin-react';
 import federation from '@originjs/vite-plugin-federation';
 import path from 'path';
 
-// Plugin to replace react/jsx-runtime imports with bundled version
-// This runs after the code is transformed but before Module Federation processes it
+// Plugin to intercept react/jsx-runtime imports and redirect to bundled version
+// Uses resolveId hook to intercept module resolution before Module Federation processes it
 function replaceJsxRuntime() {
-  let jsxRuntimeFileName = null;
+  let jsxRuntimeId = null;
+  let jsxDevRuntimeId = null;
   
   return {
     name: 'replace-jsx-runtime',
+    // This hook runs during module resolution, before Module Federation processes imports
+    resolveId(source, importer) {
+      // Intercept react/jsx-runtime and react/jsx-dev-runtime imports
+      if (source === 'react/jsx-runtime' || source === 'react/jsx-dev-runtime') {
+        // If we haven't found the bundled file yet, return null to let Vite handle it normally
+        // The alias will ensure it gets bundled
+        // Once bundled, we'll redirect to the actual file
+        if (jsxRuntimeId) {
+          return jsxRuntimeId;
+        }
+        // Return the alias path - Vite will resolve it to the physical file
+        return path.resolve(__dirname, 'node_modules/react/jsx-runtime.js');
+      }
+      return null;
+    },
+    // After build, find the actual bundled jsx-runtime file
     generateBundle(options, bundle) {
-      // First pass: find the jsx-runtime file name
+      // Find the jsx-runtime file in the bundle
       Object.keys(bundle).forEach(fileName => {
         if (fileName.includes('jsx-runtime')) {
-          jsxRuntimeFileName = fileName;
+          jsxRuntimeId = fileName;
+          jsxDevRuntimeId = fileName; // Same file for both
         }
       });
-      
-      // Second pass: replace imports with relative path
-      Object.keys(bundle).forEach(fileName => {
-        const chunk = bundle[fileName];
-        if (chunk.type === 'chunk' && chunk.code && jsxRuntimeFileName) {
-          // Replace bare specifier imports with relative imports to the bundled file
-          const relativePath = `./${jsxRuntimeFileName}`;
-          chunk.code = chunk.code.replace(
-            /from\s+['"]react\/jsx-runtime['"]/g,
-            `from '${relativePath}'`
-          );
-          chunk.code = chunk.code.replace(
-            /from\s+['"]react\/jsx-dev-runtime['"]/g,
-            `from '${relativePath}'`
-          );
-        }
-      });
+    },
+    // Also replace in the code as fallback
+    renderChunk(code, chunk) {
+      if (jsxRuntimeId) {
+        // Replace bare specifier imports with relative imports
+        code = code.replace(
+          /from\s+['"]react\/jsx-runtime['"]/g,
+          `from './${jsxRuntimeId}'`
+        );
+        code = code.replace(
+          /from\s+['"]react\/jsx-dev-runtime['"]/g,
+          `from './${jsxRuntimeId}'`
+        );
+      }
+      return code;
     },
   };
 }
