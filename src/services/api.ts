@@ -207,30 +207,46 @@ export class VegetationApiClient {
 export function useVegetationApi(): VegetationApiClient {
   try {
     const auth = useAuth();
+    console.log('[useVegetationApi] useAuth result:', auth ? 'available' : 'undefined');
     if (!auth) {
       console.warn('[useVegetationApi] useAuth returned undefined, using fallback');
       return new VegetationApiClient(
-        () => undefined,
-        () => undefined
+        () => {
+          console.warn('[useVegetationApi] getToken fallback - no auth');
+          return undefined;
+        },
+        () => {
+          console.warn('[useVegetationApi] tenantId fallback - no auth');
+          return undefined;
+        }
       );
     }
     
     const { getToken, tenantId } = auth;
+    console.log('[useVegetationApi] getToken available:', typeof getToken === 'function', 'tenantId:', tenantId);
     
     return new VegetationApiClient(
-      () => getToken(),
-      () => tenantId
+      () => {
+        const token = getToken();
+        console.log('[useVegetationApi] getToken() returned:', token ? `${token.substring(0, 20)}...` : 'undefined');
+        return token;
+      },
+      () => {
+        const tid = tenantId;
+        console.log('[useVegetationApi] tenantId:', tid);
+        return tid;
+      }
     );
   } catch (error) {
     console.error('[useVegetationApi] Error accessing useAuth:', error);
     // Return a client with fallback functions that will fail gracefully
     return new VegetationApiClient(
       () => {
-        console.warn('[useVegetationApi] getToken not available');
+        console.warn('[useVegetationApi] getToken not available (error)');
         return undefined;
       },
       () => {
-        console.warn('[useVegetationApi] tenantId not available');
+        console.warn('[useVegetationApi] tenantId not available (error)');
         return undefined;
       }
     );
