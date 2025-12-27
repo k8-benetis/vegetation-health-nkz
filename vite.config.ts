@@ -41,14 +41,6 @@ export default defineConfig({
           import: false,  // Use global from host (window.ReactRouterDOM)
           shareScope: 'default',
         },
-        // react/jsx-runtime must be bundled (not externalized) because Module Federation
-        // cannot resolve it from shared scope. We'll create a polyfill that uses React.createElement
-        'react/jsx-runtime': {
-          singleton: false,
-          requiredVersion: '^18.3.1',
-          import: true,  // Bundle it - we'll polyfill it to use window.React.createElement
-          shareScope: 'default',
-        },
         // ui-kit is shared from host via globalThis.__federation_shared__
         // Host populates this in main.tsx before modules load
         '@nekazari/ui-kit': {
@@ -69,13 +61,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      // CRITICAL: Make ui-kit use React from host when bundled
-      // This ensures ui-kit (bundled in module) can access React from window.React
-      'react': 'react',
-      'react-dom': 'react-dom',
-      // Force react/jsx-runtime to be resolved from react package (will be bundled)
-      'react/jsx-runtime': 'react/jsx-runtime',
-      'react/jsx-dev-runtime': 'react/jsx-dev-runtime',
+      // CRITICAL: Force Vite to bundle react/jsx-runtime by pointing to physical files
+      // This prevents Vite from treating it as an external shared module
+      // When Vite sees a file path, it bundles it instead of externalizing
+      'react/jsx-runtime': path.resolve(__dirname, 'node_modules/react/jsx-runtime.js'),
+      'react/jsx-dev-runtime': path.resolve(__dirname, 'node_modules/react/jsx-dev-runtime.js'),
     },
   },
   server: {
