@@ -46,9 +46,10 @@ export const ConfigPage: React.FC = () => {
     try {
       setJobsLoading(true);
       const data = await api.listJobs(undefined, 5, 0);
-      setRecentJobs(data.jobs.filter(j => j.job_type === 'download'));
+      setRecentJobs(data?.jobs?.filter(j => j.job_type === 'download') || []);
     } catch (err) {
       console.error('Error loading jobs:', err);
+      setRecentJobs([]);
     } finally {
       setJobsLoading(false);
     }
@@ -154,29 +155,35 @@ export const ConfigPage: React.FC = () => {
 
               {/* Frequency Usage */}
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-700">Daily Jobs</span>
-                  <span className="text-sm text-gray-600">
-                    {usage.frequency.used_jobs_today} / {usage.frequency.limit_jobs_today} jobs
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className={`h-3 rounded-full transition-all ${
-                      (usage.frequency.used_jobs_today / usage.frequency.limit_jobs_today) >= 0.9
-                        ? 'bg-red-500'
-                        : (usage.frequency.used_jobs_today / usage.frequency.limit_jobs_today) >= 0.75
-                        ? 'bg-yellow-500'
-                        : 'bg-green-500'
-                    }`}
-                    style={{
-                      width: `${Math.min((usage.frequency.used_jobs_today / usage.frequency.limit_jobs_today) * 100, 100)}%`,
-                    }}
-                  />
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {Math.max(0, usage.frequency.limit_jobs_today - usage.frequency.used_jobs_today)} jobs remaining today
-                </p>
+                {usage.frequency ? (
+                  <>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">Daily Jobs</span>
+                      <span className="text-sm text-gray-600">
+                        {usage.frequency.used_jobs_today} / {usage.frequency.limit_jobs_today} jobs
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div
+                        className={`h-3 rounded-full transition-all ${
+                          (usage.frequency.used_jobs_today / usage.frequency.limit_jobs_today) >= 0.9
+                            ? 'bg-red-500'
+                            : (usage.frequency.used_jobs_today / usage.frequency.limit_jobs_today) >= 0.75
+                            ? 'bg-yellow-500'
+                            : 'bg-green-500'
+                        }`}
+                        style={{
+                          width: `${Math.min((usage.frequency.used_jobs_today / usage.frequency.limit_jobs_today) * 100, 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {Math.max(0, usage.frequency.limit_jobs_today - usage.frequency.used_jobs_today)} jobs remaining today
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-500">Frequency usage data not available</p>
+                )}
               </div>
             </div>
           </Card>
