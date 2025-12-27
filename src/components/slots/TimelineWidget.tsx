@@ -4,10 +4,11 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Calendar, Cloud, CloudOff, Loader2 } from 'lucide-react';
+import { Calendar, Cloud, CloudOff, Loader2, Filter } from 'lucide-react';
 import { useUIKit } from '../../hooks/useUIKit';
 import { useVegetationContext } from '../../services/vegetationContext';
 import { useVegetationApi } from '../../services/api';
+import { CloudCoverIndicator, CloudCoverBadge } from '../widgets/CloudCoverIndicator';
 import type { VegetationScene } from '../../types';
 
 interface TimelineWidgetProps {
@@ -29,8 +30,15 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
   const [scenes, setScenes] = useState<VegetationScene[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filterClouds, setFilterClouds] = useState(true);
+  const [cloudThreshold, setCloudThreshold] = useState(20);
 
   const effectiveEntityId = entityId || selectedEntityId;
+
+  // Filter scenes by cloud coverage
+  const filteredScenes = filterClouds
+    ? scenes.filter((scene) => (scene.cloud_coverage ?? 100) <= cloudThreshold)
+    : scenes;
 
   useEffect(() => {
     // Fetch available scenes
@@ -111,18 +119,34 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
 
   return (
     <Card padding="md">
-      <div className="flex items-center gap-2 mb-4">
-        <Calendar className="w-5 h-5 text-green-600" />
-        <h3 className="text-lg font-semibold text-gray-900">
-          Available Scenes
-        </h3>
-        <span className="text-sm text-gray-500">({scenes.length} scenes)</span>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-green-600" />
+          <h3 className="text-lg font-semibold text-gray-900">
+            Escenas Disponibles
+          </h3>
+          <span className="text-sm text-gray-500">
+            ({filteredScenes.length} de {scenes.length} escenas)
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={filterClouds}
+              onChange={(e) => setFilterClouds(e.target.checked)}
+              className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+            />
+            <Filter className="w-3 h-3" />
+            <span>Filtrar nubes (&lt;{cloudThreshold}%)</span>
+          </label>
+        </div>
       </div>
 
       {/* Horizontal Timeline */}
       <div className="overflow-x-auto pb-2">
         <div className="flex gap-2 min-w-max">
-          {scenes.map((scene) => {
+          {filteredScenes.map((scene) => {
             const isSelected = selectedDate === scene.sensing_date;
             const date = new Date(scene.sensing_date);
             const day = date.getDate();
@@ -156,13 +180,13 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
                 </div>
 
                 {/* Cloud Coverage Indicator */}
-                <div className="mt-1 flex items-center gap-1">
-                  {getCloudCoverageIcon(scene.cloud_coverage)}
-                  {scene.cloud_coverage !== undefined && (
-                    <span className={`text-xs ${getCloudCoverageColor(scene.cloud_coverage)}`}>
-                      {scene.cloud_coverage.toFixed(0)}%
-                    </span>
-                  )}
+                <div className="mt-1">
+                  <CloudCoverIndicator
+                    cloudCoverage={scene.cloud_coverage}
+                    threshold={cloudThreshold}
+                    size="sm"
+                    showWarning={true}
+                  />
                 </div>
 
                 {/* Selection Indicator */}

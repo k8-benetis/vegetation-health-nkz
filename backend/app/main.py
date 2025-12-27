@@ -417,6 +417,141 @@ async def get_job_details(
     )
 
 
+@app.get("/api/vegetation/jobs/{job_id}/histogram")
+async def get_job_histogram(
+    job_id: UUID,
+    bins: int = 50,
+    current_user: dict = Depends(require_auth),
+    db: Session = Depends(get_db_for_tenant)
+):
+    """Get histogram distribution for a completed job.
+    
+    Returns approximate distribution based on statistics (mean, std_dev) 
+    using a normal distribution approximation.
+    For exact distribution, would need to read the full raster (expensive).
+    """
+    from app.models import VegetationIndexCache
+    
+    # Get job
+    job = db.query(VegetationJob).filter(
+        VegetationJob.id == job_id,
+        VegetationJob.tenant_id == current_user['tenant_id']
+    ).first()
+    
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+    
+    if job.status != 'completed' or not job.result:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job is not completed or has no results"
+        )
+    
+    result = job.result if isinstance(job.result, dict) else {}
+    stats = result.get('statistics', {})
+    
+    if not stats:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No statistics available for this job"
+        )
+    
+    mean = float(stats.get('mean', 0)) if stats.get('mean') is not None else 0
+    std_dev = float(stats.get('std', 0)) if stats.get('std') is not None else 0
+    min_val = float(stats.get('min', -1)) if stats.get('min') is not None else -1
+    max_val = float(stats.get('max', 1)) if stats.get('max') is not None else 1
+    pixel_count = int(stats.get('pixel_count', 0)) if stats.get('pixel_count') is not None else 0
+    
+    # Try to get exact distribution from VegetationIndexCache if available
+    index_cache = None
+    if job.job_type == 'calculate_index' and 'scene_id' in result:
+        scene_id = result['scene_id']
+        index_type = result.get('index_type', 'NDVI')
+        
+        # Find the cached index
+        index_cache = db.query(VegetationIndexCache).filter(
+            VegetationIndexCache.scene_id == scene_id,
+            VegetationIndexCache.index_type == index_type,
+            VegetationIndexCache.tenant_id == current_user['tenant_id']
+        ).first()
+    
+    # Generate histogram bins
+    try:
+        import numpy as np
+    except ImportError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="numpy is required for histogram calculation"
+        )
+    import math
+    
+    # Use actual min/max from statistics
+    bin_edges = np.linspace(min_val, max_val, bins + 1)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    
+    # Generate approximate distribution using normal distribution
+    # This is an approximation - for exact distribution, would need to read raster
+    if std_dev > 0 and pixel_count > 0:
+        # Normal distribution CDF approximation (using error function)
+        def normal_cdf(x, mu, sigma):
+            """Cumulative distribution function for normal distribution."""
+            if sigma == 0:
+                return 1.0 if x >= mu else 0.0
+            z = (x - mu) / sigma
+            return 0.5 * (1 + math.erf(z / math.sqrt(2)))
+        
+        # Calculate probabilities for each bin
+        bin_probs = []
+        for i in range(len(bin_edges) - 1):
+            prob = normal_cdf(bin_edges[i + 1], mean, std_dev) - normal_cdf(bin_edges[i], mean, std_dev)
+            bin_probs.append(max(0, prob))
+        
+        # Normalize probabilities
+        total_prob = sum(bin_probs)
+        if total_prob > 0:
+            bin_probs = [p / total_prob for p in bin_probs]
+        
+        # Convert to counts
+        bin_counts = np.array([int(p * pixel_count) for p in bin_probs])
+    else:
+        # If no std_dev, create uniform distribution
+        bin_counts = np.full(bins, pixel_count // bins)
+    
+    # Ensure total matches pixel_count
+    total = int(bin_counts.sum())
+    if total < pixel_count:
+        diff = pixel_count - total
+        # Distribute remainder to bins with most counts
+        bin_counts = bin_counts.astype(int)
+        indices = np.argsort(bin_counts)[::-1]
+        for i in range(min(diff, len(indices))):
+            bin_counts[indices[i]] += 1
+    elif total > pixel_count:
+        # Remove excess from bins with most counts
+        diff = total - pixel_count
+        indices = np.argsort(bin_counts)[::-1]
+        for i in range(min(diff, len(indices))):
+            if bin_counts[indices[i]] > 0:
+                bin_counts[indices[i]] -= 1
+    
+    return {
+        "bins": bin_centers.tolist(),
+        "counts": bin_counts.tolist(),
+        "statistics": {
+            "mean": mean,
+            "min": min_val,
+            "max": max_val,
+            "std_dev": std_dev,
+            "pixel_count": pixel_count
+        },
+        "approximation": True,  # Indicates this is an approximation
+        "note": "Distribution approximated from statistics. For exact distribution, raster reading would be required."
+    }
+
+
 @app.get("/api/vegetation/jobs")
 async def list_jobs(
     status_filter: Optional[str] = None,

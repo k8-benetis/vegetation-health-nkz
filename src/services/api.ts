@@ -157,6 +157,38 @@ export class VegetationApiClient {
     return response as { job_id: string; message: string };
   }
 
+  async getJobHistogram(
+    jobId: string,
+    bins: number = 50
+  ): Promise<{
+    bins: number[];
+    counts: number[];
+    statistics: {
+      mean: number;
+      min: number;
+      max: number;
+      std_dev: number;
+      pixel_count: number;
+    };
+    approximation: boolean;
+    note?: string;
+  }> {
+    const response = await this.client.get(`/jobs/${jobId}/histogram?bins=${bins}`);
+    return response as {
+      bins: number[];
+      counts: number[];
+      statistics: {
+        mean: number;
+        min: number;
+        max: number;
+        std_dev: number;
+        pixel_count: number;
+      };
+      approximation: boolean;
+      note?: string;
+    };
+  }
+
   async getConfig(): Promise<VegetationConfig> {
     const response = await this.client.get('/config');
     return response as VegetationConfig;
