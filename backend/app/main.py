@@ -24,7 +24,9 @@ def get_db_for_tenant(current_user: dict = Depends(require_auth)):
     This is a FastAPI dependency that depends on current_user.
     Returns a generator that FastAPI will handle automatically.
     """
-    return get_db_with_tenant(current_user['tenant_id'])
+    # Call get_db_with_tenant and yield from it
+    for db in get_db_with_tenant(current_user['tenant_id']):
+        yield db
 from app.middleware.service_auth import require_service_auth
 from app.models import (
     VegetationConfig, VegetationJob, VegetationScene,
