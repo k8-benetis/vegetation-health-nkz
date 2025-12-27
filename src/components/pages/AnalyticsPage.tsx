@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, Calendar, Filter, Map, Layers, Settings, Compare, LineChart } from 'lucide-react';
+import { BarChart3, TrendingUp, Calendar, Filter, Map, Layers, Settings, GitCompare, LineChart } from 'lucide-react';
 import { useUIKit } from '../../hooks/useUIKit';
 import { Select } from '../ui/Select';
 import { useVegetationApi } from '../../services/api';
@@ -168,7 +168,7 @@ export const AnalyticsPage: React.FC = () => {
             {[
               { id: 'calculations' as TabType, label: 'Cálculos', icon: Layers },
               { id: 'timeseries' as TabType, label: 'Series Temporales', icon: LineChart },
-              { id: 'comparison' as TabType, label: 'Comparación A/B', icon: Compare },
+              { id: 'comparison' as TabType, label: 'Comparación A/B', icon: GitCompare },
               { id: 'advanced' as TabType, label: 'Configuración', icon: Settings },
             ].map((tab) => {
               const Icon = tab.icon;
