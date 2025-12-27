@@ -45,6 +45,7 @@ spec:
               name: postgresql-secret
               key: connection-string
         # Platform Database Configuration (for reading external_api_credentials)
+        # Use same connection string as module DB, but will connect to platform DB name
         - name: PLATFORM_DATABASE_URL
           valueFrom:
             secretKeyRef:
