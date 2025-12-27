@@ -3,15 +3,50 @@ Service to retrieve external API credentials from the platform's central storage
 This allows modules to use platform-managed credentials without requiring user configuration.
 """
 
+import os
 import logging
 from typing import Optional, Dict, Any
-from sqlalchemy import text
-from sqlalchemy.orm import Session
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 logger = logging.getLogger(__name__)
 
 
-def get_copernicus_credentials(db: Session) -> Optional[Dict[str, str]]:
+def _get_platform_db_connection():
+    """
+    Get connection to platform database (where external_api_credentials table is stored).
+    
+    The platform database is typically 'fiware_history' or 'nekazari' and is accessed
+    via POSTGRES_URL environment variable (which points to the platform database).
+    """
+    # Try to get platform database URL from environment
+    # In Kubernetes, this might be POSTGRES_URL pointing to platform DB
+    # or we might need to construct it from components
+    platform_db_url = os.getenv('PLATFORM_DATABASE_URL') or os.getenv('POSTGRES_URL')
+    
+    if not platform_db_url:
+        # Try to construct from components (for platform database)
+        postgres_host = os.getenv('POSTGRES_HOST', 'postgresql-service')
+        postgres_port = os.getenv('POSTGRES_PORT', '5432')
+        postgres_user = os.getenv('POSTGRES_USER', 'timescale')
+        postgres_password = os.getenv('POSTGRES_PASSWORD', '')
+        postgres_db = os.getenv('PLATFORM_DATABASE_NAME', 'fiware_history')  # Platform DB name
+        
+        if postgres_password:
+            platform_db_url = f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/{postgres_db}"
+        else:
+            logger.warning("Cannot construct platform database URL: POSTGRES_PASSWORD not set")
+            return None
+    
+    try:
+        conn = psycopg2.connect(platform_db_url)
+        return conn
+    except Exception as e:
+        logger.warning(f"Failed to connect to platform database: {e}")
+        return None
+
+
+def get_copernicus_credentials(db=None) -> Optional[Dict[str, str]]:
     """
     Get Copernicus CDSE credentials from platform's external_api_credentials table.
     
@@ -19,7 +54,7 @@ def get_copernicus_credentials(db: Session) -> Optional[Dict[str, str]]:
     all modules to use the same credentials without requiring per-module configuration.
     
     Args:
-        db: Database session (must have access to platform database)
+        db: Optional database session (ignored - we use direct connection to platform DB)
         
     Returns:
         Dictionary with 'client_id' and 'client_secret', or None if not found
@@ -28,10 +63,18 @@ def get_copernicus_credentials(db: Session) -> Optional[Dict[str, str]]:
         This function queries the platform's external_api_credentials table.
         The service_name should be 'copernicus-cdse' as configured in the platform.
     """
+    conn = None
     try:
+        # Connect directly to platform database (not module database)
+        conn = _get_platform_db_connection()
+        if not conn:
+            logger.debug("Cannot connect to platform database - credentials not available")
+            return None
+        
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
         # Query external_api_credentials table (platform table, not module-specific)
-        # Note: This table is in the platform database, not the module database
-        result = db.execute(text("""
+        cur.execute("""
             SELECT 
                 username,
                 password_encrypted,
@@ -41,22 +84,23 @@ def get_copernicus_credentials(db: Session) -> Optional[Dict[str, str]]:
             WHERE service_name = 'copernicus-cdse'
             AND is_active = true
             LIMIT 1
-        """))
+        """)
         
-        row = result.fetchone()
+        row = cur.fetchone()
+        cur.close()
         
         if not row:
-            logger.warning("Copernicus CDSE credentials not found in platform database")
+            logger.debug("Copernicus CDSE credentials not found in platform database")
             return None
         
         # Extract credentials
         # Note: password_encrypted might need decryption in production
         # For now, assuming it's stored in a way that can be used directly
         # In production, you might need to decrypt using pgcrypto or similar
-        username = row[0]
-        password_encrypted = row[1]
-        service_url = row[2] or 'https://dataspace.copernicus.eu'
-        auth_type = row[3] or 'basic_auth'
+        username = row['username']
+        password_encrypted = row['password_encrypted']
+        service_url = row.get('service_url') or 'https://dataspace.copernicus.eu'
+        auth_type = row.get('auth_type') or 'basic_auth'
         
         if not username or not password_encrypted:
             logger.warning("Copernicus CDSE credentials incomplete (missing username or password)")
@@ -75,16 +119,20 @@ def get_copernicus_credentials(db: Session) -> Optional[Dict[str, str]]:
             'auth_type': auth_type
         }
         
+    except psycopg2.errors.UndefinedTable:
+        logger.debug("Platform credentials table (external_api_credentials) does not exist")
+        return None
     except Exception as e:
         # Table might not exist or not accessible - this is OK for modules
-        # This is expected if the module uses a separate database from the platform
-        error_msg = str(e)
-        if "does not exist" in error_msg or "relation" in error_msg.lower():
-            logger.debug(f"Platform credentials table not accessible (module uses separate database): {e}")
+        error_msg = str(e).lower()
+        if "does not exist" in error_msg or "relation" in error_msg or "undefined table" in error_msg:
+            logger.debug(f"Platform credentials table not accessible: {e}")
         else:
             logger.warning(f"Could not retrieve Copernicus credentials from platform: {e}")
-        logger.info("Falling back to module-specific configuration")
         return None
+    finally:
+        if conn:
+            conn.close()
 
 
 def get_copernicus_credentials_with_fallback(
@@ -107,7 +155,7 @@ def get_copernicus_credentials_with_fallback(
         Dictionary with credentials or None if neither source available
     """
     # Try platform credentials first
-    platform_creds = get_copernicus_credentials(db)
+    platform_creds = get_copernicus_credentials()
     
     if platform_creds:
         return platform_creds

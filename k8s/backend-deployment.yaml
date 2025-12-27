@@ -44,6 +44,28 @@ spec:
             secretKeyRef:
               name: postgresql-secret
               key: connection-string
+        # Platform Database Configuration (for reading external_api_credentials)
+        - name: PLATFORM_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: connection-string
+              optional: true
+        # Platform Database Components (fallback if PLATFORM_DATABASE_URL not set)
+        - name: POSTGRES_HOST
+          value: "postgresql-service"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_USER
+          value: "timescale"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: password
+              optional: true
+        - name: PLATFORM_DATABASE_NAME
+          value: "fiware_history"
         # Redis Configuration (Celery + Cache)
         - name: CELERY_BROKER_URL
           value: "redis://redis-service:6379/0"

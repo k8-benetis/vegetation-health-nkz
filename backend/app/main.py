@@ -614,14 +614,10 @@ async def get_credentials_status(
     
     try:
         from app.services.platform_credentials import get_copernicus_credentials
-        platform_creds = get_copernicus_credentials(db)
+        # get_copernicus_credentials now connects directly to platform database
+        platform_creds = get_copernicus_credentials()
     except Exception as e:
-        # Expected if module uses separate database from platform
-        error_msg = str(e).lower()
-        if "does not exist" in error_msg or "relation" in error_msg:
-            logger.debug(f"Platform credentials table not accessible (expected for separate database): {e}")
-        else:
-            logger.warning(f"Error checking platform credentials: {e}")
+        logger.debug(f"Error checking platform credentials: {e}")
     
     # Check module-specific credentials
     if config and config.copernicus_client_id and config.copernicus_client_secret_encrypted:

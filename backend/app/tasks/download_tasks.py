@@ -50,7 +50,6 @@ def download_sentinel2_scene(self, job_id: str, tenant_id: str, parameters: Dict
         
         # Get Copernicus credentials from platform (preferred) or module config (fallback)
         creds = get_copernicus_credentials_with_fallback(
-            db=db,
             fallback_client_id=config.copernicus_client_id if config else None,
             fallback_client_secret=config.copernicus_client_secret_encrypted if config else None
         )
