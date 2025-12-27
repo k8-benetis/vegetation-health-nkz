@@ -19,24 +19,22 @@ def _get_platform_db_connection():
     The platform database is typically 'fiware_history' or 'nekazari' and is accessed
     via POSTGRES_URL environment variable (which points to the platform database).
     """
-    # Try to get platform database URL from environment
-    # In Kubernetes, this might be POSTGRES_URL pointing to platform DB
-    # or we might need to construct it from components
-    platform_db_url = os.getenv('PLATFORM_DATABASE_URL') or os.getenv('POSTGRES_URL')
+    # Get the module database URL and replace the database name with platform database name
+    database_url = os.getenv('DATABASE_URL', '')
+    platform_db_name = os.getenv('PLATFORM_DATABASE_NAME', 'fiware_history')
     
-    if not platform_db_url:
-        # Try to construct from components (for platform database)
-        postgres_host = os.getenv('POSTGRES_HOST', 'postgresql-service')
-        postgres_port = os.getenv('POSTGRES_PORT', '5432')
-        postgres_user = os.getenv('POSTGRES_USER', 'timescale')
-        postgres_password = os.getenv('POSTGRES_PASSWORD', '')
-        postgres_db = os.getenv('PLATFORM_DATABASE_NAME', 'fiware_history')  # Platform DB name
-        
-        if postgres_password:
-            platform_db_url = f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/{postgres_db}"
-        else:
-            logger.warning("Cannot construct platform database URL: POSTGRES_PASSWORD not set")
-            return None
+    if not database_url:
+        logger.warning("Cannot construct platform database URL: DATABASE_URL not set")
+        return None
+    
+    # Replace database name in connection string
+    if '/' in database_url:
+        # Extract base URL (everything before the last /)
+        base_url = database_url.rsplit('/', 1)[0]
+        platform_db_url = f"{base_url}/{platform_db_name}"
+    else:
+        logger.warning(f"Cannot parse DATABASE_URL to construct platform database URL: {database_url}")
+        return None
     
     try:
         conn = psycopg2.connect(platform_db_url)
@@ -136,7 +134,7 @@ def get_copernicus_credentials(db=None) -> Optional[Dict[str, str]]:
 
 
 def get_copernicus_credentials_with_fallback(
-    db: Session,
+    db=None,
     fallback_client_id: Optional[str] = None,
     fallback_client_secret: Optional[str] = None
 ) -> Optional[Dict[str, str]]:
