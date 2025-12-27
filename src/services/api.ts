@@ -206,18 +206,14 @@ export class VegetationApiClient {
 // Helper to get token from host's auth context
 function getAuthTokenFromHost(): string | undefined {
   try {
-    // Try to access auth from host's window context
+    // Try to access auth from host's window context (exposed by KeycloakAuthContext)
     if (typeof window !== 'undefined') {
-      // Check if host exposes auth functions
-      const hostAuth = (window as any).__nekazariAuth;
+      const hostAuth = (window as any).__nekazariAuthContext;
       if (hostAuth && typeof hostAuth.getToken === 'function') {
         const token = hostAuth.getToken();
-        console.log('[getAuthTokenFromHost] Got token from window.__nekazariAuth');
+        console.log('[getAuthTokenFromHost] Got token from window.__nekazariAuthContext');
         return token;
       }
-      
-      // Try to access via SDK's useAuth (may not work in remote module context)
-      // This is a fallback - the host should expose auth via window
     }
   } catch (error) {
     console.warn('[getAuthTokenFromHost] Error accessing host auth:', error);
@@ -228,9 +224,9 @@ function getAuthTokenFromHost(): string | undefined {
 function getTenantIdFromHost(): string | undefined {
   try {
     if (typeof window !== 'undefined') {
-      const hostAuth = (window as any).__nekazariAuth;
+      const hostAuth = (window as any).__nekazariAuthContext;
       if (hostAuth && hostAuth.tenantId) {
-        console.log('[getTenantIdFromHost] Got tenantId from window.__nekazariAuth:', hostAuth.tenantId);
+        console.log('[getTenantIdFromHost] Got tenantId from window.__nekazariAuthContext:', hostAuth.tenantId);
         return hostAuth.tenantId;
       }
     }
@@ -257,7 +253,7 @@ export function useVegetationApi(): VegetationApiClient {
       console.log('[useVegetationApi] Using useAuth from SDK');
     } else {
       // Fallback: try to get from host's window context
-      console.log('[useVegetationApi] useAuth unavailable, trying window.__nekazariAuth');
+      console.log('[useVegetationApi] useAuth unavailable, trying window.__nekazariAuthContext');
       getToken = getAuthTokenFromHost;
       tenantId = getTenantIdFromHost();
     }
