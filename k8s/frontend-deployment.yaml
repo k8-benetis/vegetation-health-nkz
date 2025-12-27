@@ -32,7 +32,7 @@ spec:
       - name: ghcr-secret
       containers:
       - name: nginx
-        image: ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-frontend:v1.8.0
+        image: ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-frontend:v1.9.0
         imagePullPolicy: Always
         ports:
         - name: http
