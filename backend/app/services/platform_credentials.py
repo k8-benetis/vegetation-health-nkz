@@ -77,7 +77,12 @@ def get_copernicus_credentials(db: Session) -> Optional[Dict[str, str]]:
         
     except Exception as e:
         # Table might not exist or not accessible - this is OK for modules
-        logger.warning(f"Could not retrieve Copernicus credentials from platform: {e}")
+        # This is expected if the module uses a separate database from the platform
+        error_msg = str(e)
+        if "does not exist" in error_msg or "relation" in error_msg.lower():
+            logger.debug(f"Platform credentials table not accessible (module uses separate database): {e}")
+        else:
+            logger.warning(f"Could not retrieve Copernicus credentials from platform: {e}")
         logger.info("Falling back to module-specific configuration")
         return None
 

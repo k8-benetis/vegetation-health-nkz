@@ -98,16 +98,38 @@ export const ConfigPage: React.FC = () => {
       setError(null);
       setSuccess(false);
 
-      await api.updateConfig(config);
+      // Only send fields that have values to avoid sending empty strings
+      const configToSave: Partial<VegetationConfig> = {};
+      if (config.default_index_type) configToSave.default_index_type = config.default_index_type;
+      if (config.cloud_coverage_threshold !== undefined) configToSave.cloud_coverage_threshold = config.cloud_coverage_threshold;
+      if (config.auto_process !== undefined) configToSave.auto_process = config.auto_process;
+      if (config.storage_type) configToSave.storage_type = config.storage_type;
+      // Note: Copernicus credentials are managed by platform, but can be set as fallback
+      if (config.copernicus_client_id) configToSave.copernicus_client_id = config.copernicus_client_id;
+      if (config.copernicus_client_secret) configToSave.copernicus_client_secret = config.copernicus_client_secret;
+
+      await api.updateConfig(configToSave);
       setSuccess(true);
       
-      // Reload jobs to show updated status
+      // Reload config and jobs to show updated status
+      await loadConfig();
       loadRecentJobs();
+      loadCredentialsStatus();
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save configuration');
+    } catch (err: any) {
+      console.error('Error saving config:', err);
+      // Better error message handling
+      if (err?.response?.status === 405) {
+        setError('Método no permitido. Por favor, verifique la configuración del servidor.');
+      } else if (err?.response?.status === 401) {
+        setError('No autorizado. Por favor, inicie sesión nuevamente.');
+      } else if (err?.response?.status === 400) {
+        setError(err?.response?.data?.detail || 'Datos inválidos. Por favor, verifique los valores ingresados.');
+      } else {
+        setError(err?.message || err?.toString() || 'Error al guardar la configuración. Por favor, intente nuevamente.');
+      }
     } finally {
       setSaving(false);
     }

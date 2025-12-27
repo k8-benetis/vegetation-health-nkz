@@ -108,6 +108,8 @@ class ConfigUpdateRequest(BaseModel):
     auto_process: Optional[bool] = None
     storage_type: Optional[str] = None
     # NOTE: storage_bucket removed - now auto-generated from tenant_id for security
+    # NOTE: Copernicus credentials are now managed by platform, but module-specific
+    # credentials can still be set as fallback for backward compatibility
 
 
 class IndexCalculationRequest(BaseModel):
@@ -614,7 +616,12 @@ async def get_credentials_status(
         from app.services.platform_credentials import get_copernicus_credentials
         platform_creds = get_copernicus_credentials(db)
     except Exception as e:
-        logger.warning(f"Error checking platform credentials: {e}")
+        # Expected if module uses separate database from platform
+        error_msg = str(e).lower()
+        if "does not exist" in error_msg or "relation" in error_msg:
+            logger.debug(f"Platform credentials table not accessible (expected for separate database): {e}")
+        else:
+            logger.warning(f"Error checking platform credentials: {e}")
     
     # Check module-specific credentials
     if config and config.copernicus_client_id and config.copernicus_client_secret_encrypted:
@@ -647,7 +654,8 @@ async def get_credentials_status(
         }
 
 
-@app.post("/api/vegetation/config")
+@app.post("/api/vegetation/config", status_code=status.HTTP_200_OK)
+@app.put("/api/vegetation/config", status_code=status.HTTP_200_OK)  # Support PUT as well for compatibility
 async def update_config(
     request: ConfigUpdateRequest,
     current_user: dict = Depends(require_auth),
