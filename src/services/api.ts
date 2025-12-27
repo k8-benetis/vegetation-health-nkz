@@ -13,14 +13,21 @@ import type {
   VegetationScene,
 } from '../types';
 
-const API_BASE_URL = '/api/vegetation';
+// Use absolute URL to ensure requests go to backend, not intercepted by host frontend
+const API_BASE_URL = (typeof window !== 'undefined' && window.__ENV__?.VITE_API_URL) 
+  ? `${window.__ENV__.VITE_API_URL}/api/vegetation`
+  : '/api/vegetation';
 
 export class VegetationApiClient {
   private client: NKZClient;
 
   constructor(getToken: () => string | undefined, getTenantId: () => string | undefined) {
+    const baseUrl = (typeof window !== 'undefined' && window.__ENV__?.VITE_API_URL) 
+      ? `${window.__ENV__.VITE_API_URL}/api/vegetation`
+      : '/api/vegetation';
+    console.log('[VegetationApiClient] Initializing with baseUrl:', baseUrl);
     this.client = new NKZClient({
-      baseUrl: API_BASE_URL,
+      baseUrl: baseUrl,
       getToken: getToken,
       getTenantId: getTenantId,
     });
