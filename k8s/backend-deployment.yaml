@@ -43,7 +43,7 @@ spec:
           valueFrom:
             secretKeyRef:
               name: postgresql-secret
-              key: connection-string
+              key: postgres-url
         # Platform Database Configuration (for reading external_api_credentials)
         # Platform Database Name (used to construct connection to platform DB from DATABASE_URL)
         - name: PLATFORM_DATABASE_NAME
