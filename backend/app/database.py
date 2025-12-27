@@ -6,7 +6,7 @@ import os
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import NullPool
-from contextlib import contextmanager
+# Removed contextmanager import - using generator function directly
 
 from app.models.base import Base
 
@@ -50,9 +50,10 @@ def get_db_session() -> Session:
         db.close()
 
 
-@contextmanager
 def get_db_with_tenant(tenant_id: str):
     """Get database session with tenant context set.
+    
+    This is a generator function for FastAPI dependency injection.
     
     Args:
         tenant_id: Tenant ID for RLS
