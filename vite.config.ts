@@ -84,21 +84,19 @@ export default defineConfig({
     // React must be shared via Module Federation (singleton) to work correctly
     // when module renders inside host's React tree
     rollupOptions: {
-      // Externalize React and jsx-runtime so ui-kit (when bundled) can use React from host
+      // Externalize React so ui-kit (when bundled) can use React from host
+      // Note: react/jsx-runtime is NOT externalized - it's bundled because
+      // Module Federation doesn't provide it in shared scope and it's safe to bundle
       external: [
         'react',
         'react-dom',
         'react-router-dom',
-        'react/jsx-runtime',
-        'react/jsx-dev-runtime',
       ],
       output: {
         globals: {
           'react': 'React',
           'react-dom': 'ReactDOM',
           'react-router-dom': 'ReactRouterDOM',
-          'react/jsx-runtime': 'React',
-          'react/jsx-dev-runtime': 'React',
         },
         format: 'es',
       },
