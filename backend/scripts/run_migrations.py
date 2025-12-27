@@ -97,6 +97,16 @@ def check_migration_applied(conn, migration_num: int) -> bool:
                 );
             """)
             return cursor.fetchone()[0]
+        elif migration_num == 3:
+            # Migration 003 creates global_scene_cache table
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'global_scene_cache'
+                );
+            """)
+            return cursor.fetchone()[0]
         else:
             # Unknown migration - assume not applied
             return False

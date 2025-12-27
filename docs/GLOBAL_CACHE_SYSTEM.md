@@ -158,11 +158,77 @@ The global bucket is automatically created if it doesn't exist. Ensure your stor
 
 ### Migration
 
-Run the migration to create the cache table:
+**IMPORTANT**: The global cache system requires running migration 003 to create the `global_scene_cache` table.
+
+#### Option 1: Using the Migration Script (Recommended)
+
+The module includes an automated migration runner that detects and applies migrations:
 
 ```bash
-# Migration file: backend/migrations/003_create_global_scene_cache.sql
-psql -d your_database -f backend/migrations/003_create_global_scene_cache.sql
+# From the backend directory
+cd backend
+python scripts/run_migrations.py
+```
+
+The script will:
+- Automatically detect migration 003
+- Check if it's already applied
+- Apply it if needed
+- Use PostgreSQL advisory locks to prevent concurrent execution
+
+**Requirements:**
+- `DATABASE_URL` environment variable must be set
+- Database connection must be accessible
+
+#### Option 2: Manual SQL Execution
+
+If you prefer to run the migration manually:
+
+```bash
+# Direct SQL execution
+psql $DATABASE_URL -f backend/migrations/003_create_global_scene_cache.sql
+```
+
+Or from within a database session:
+
+```sql
+\i backend/migrations/003_create_global_scene_cache.sql
+```
+
+#### Option 3: Kubernetes Pod Execution
+
+If running in Kubernetes, execute from the backend pod:
+
+```bash
+# Get pod name
+kubectl get pods -n nekazari | grep vegetation-prime-api
+
+# Execute migration script
+kubectl exec -it vegetation-prime-api-<pod-id> -n nekazari -- \
+  python /app/scripts/run_migrations.py
+```
+
+Or execute SQL directly:
+
+```bash
+kubectl exec -it vegetation-prime-api-<pod-id> -n nekazari -- \
+  psql $DATABASE_URL -f /app/migrations/003_create_global_scene_cache.sql
+```
+
+#### Verification
+
+After running the migration, verify the table was created:
+
+```sql
+-- Check if table exists
+SELECT EXISTS (
+    SELECT FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'global_scene_cache'
+);
+
+-- View table structure
+\d global_scene_cache
 ```
 
 ## Monitoring
