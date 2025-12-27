@@ -179,13 +179,20 @@ export class VegetationApiClient {
     message: string;
     client_id_preview?: string;
   }> {
-    const response = await this.client.get('/config/credentials-status');
-    return response as {
-      available: boolean;
-      source: 'platform' | 'module' | null;
-      message: string;
-      client_id_preview?: string;
-    };
+    console.log('[VegetationApiClient] Calling getCredentialsStatus...');
+    try {
+      const response = await this.client.get('/config/credentials-status');
+      console.log('[VegetationApiClient] getCredentialsStatus response:', response);
+      return response as {
+        available: boolean;
+        source: 'platform' | 'module' | null;
+        message: string;
+        client_id_preview?: string;
+      };
+    } catch (error) {
+      console.error('[VegetationApiClient] Error in getCredentialsStatus:', error);
+      throw error;
+    }
   }
 }
 
