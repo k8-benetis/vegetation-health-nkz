@@ -11,6 +11,8 @@ import { useVegetationApi } from '../../services/api';
 import type { VegetationConfig, VegetationIndexType, VegetationJob } from '../../types';
 
 export const ConfigPage: React.FC = () => {
+  console.log('[ConfigPage] Component rendering...');
+  
   // Get UI components safely from Host
   const { Card, Button } = useUIKit();
   const api = useVegetationApi();
@@ -35,6 +37,7 @@ export const ConfigPage: React.FC = () => {
   const [credentialsLoading, setCredentialsLoading] = useState(false);
 
   useEffect(() => {
+    console.log('[ConfigPage] useEffect triggered - loading data...');
     loadConfig();
     loadRecentJobs();
     loadUsage();
