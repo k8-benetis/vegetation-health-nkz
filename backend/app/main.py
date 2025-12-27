@@ -18,12 +18,13 @@ from app.database import get_db_with_tenant, get_db_session, init_db
 from app.middleware.auth import require_auth, get_tenant_id
 
 # Helper function for database dependency with tenant context
-def get_db_for_tenant(current_user: dict = Depends(require_auth)) -> Session:
+def get_db_for_tenant(current_user: dict = Depends(require_auth)):
     """Get database session with tenant context.
     
     This is a FastAPI dependency that depends on current_user.
+    Returns a generator that FastAPI will handle automatically.
     """
-    return next(get_db_with_tenant(current_user['tenant_id']))
+    return get_db_with_tenant(current_user['tenant_id'])
 from app.middleware.service_auth import require_service_auth
 from app.models import (
     VegetationConfig, VegetationJob, VegetationScene,
