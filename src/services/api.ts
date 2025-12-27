@@ -205,28 +205,45 @@ export class VegetationApiClient {
 
 // Hook for using API client
 export function useVegetationApi(): VegetationApiClient {
-  // Use SDK's useAuth which already handles window.__nekazariAuthContext
-  const auth = useAuth();
-  
-  // Log for debugging
-  if (!auth) {
-    console.warn('[useVegetationApi] useAuth returned undefined - API calls will fail without auth');
+  // Access host auth context directly from window (more reliable than SDK's useAuth in remote modules)
+  // The host exposes KeycloakAuthContextType with getToken() function and tenantId property
+  const getTokenFromHost = (): string | undefined => {
+    try {
+      const hostAuth = (window as any).__nekazariAuthContext;
+      if (hostAuth && typeof hostAuth.getToken === 'function') {
+        const token = hostAuth.getToken();
+        return token;
+      }
+    } catch (error) {
+      console.warn('[useVegetationApi] Error accessing host auth:', error);
+    }
+    return undefined;
+  };
+
+  const getTenantIdFromHost = (): string | undefined => {
+    try {
+      const hostAuth = (window as any).__nekazariAuthContext;
+      if (hostAuth && hostAuth.tenantId) {
+        return hostAuth.tenantId;
+      }
+    } catch (error) {
+      console.warn('[useVegetationApi] Error accessing host tenantId:', error);
+    }
+    return undefined;
+  };
+
+  // Check if host auth is available
+  const hostAuth = (window as any).__nekazariAuthContext;
+  if (!hostAuth) {
+    console.warn('[useVegetationApi] Host auth context not available in window.__nekazariAuthContext');
   } else {
-    const token = auth.getToken();
-    const tenantId = auth.getTenantId();
-    console.log('[useVegetationApi] Auth available - token:', token ? `${token.substring(0, 20)}...` : 'undefined', 'tenantId:', tenantId);
+    const token = getTokenFromHost();
+    const tenantId = getTenantIdFromHost();
+    console.log('[useVegetationApi] Host auth available - token:', token ? `${token.substring(0, 20)}...` : 'undefined', 'tenantId:', tenantId);
   }
   
   return new VegetationApiClient(
-    () => {
-      const token = auth?.getToken();
-      if (!token) {
-        console.warn('[useVegetationApi] getToken() returned undefined - request will fail');
-      }
-      return token;
-    },
-    () => {
-      return auth?.getTenantId();
-    }
+    getTokenFromHost,
+    getTenantIdFromHost
   );
 }
