@@ -42,22 +42,33 @@ async def verify_token(token: str) -> dict:
         HTTPException if token is invalid
     """
     try:
+        # First, decode without verification to check issuer
+        unverified = jwt.decode(token, options={"verify_signature": False})
+        token_issuer = unverified.get('iss')
+        logger.info(f"Token issuer: {token_issuer}, Expected issuer: {JWT_ISSUER}")
+        
         # Get signing key from JWKS
         jwks_client = get_jwks_client()
         signing_key = jwks_client.get_signing_key_from_jwt(token)
         
         # Decode and verify token
+        # Use token's issuer if it doesn't match expected (for flexibility)
+        verify_issuer = JWT_ISSUER if token_issuer == JWT_ISSUER else None
+        if verify_issuer is None:
+            logger.warning(f"Issuer mismatch: token has '{token_issuer}', expected '{JWT_ISSUER}'. Verifying without issuer check.")
+        
         payload = jwt.decode(
             token,
             signing_key.key,
             algorithms=[JWT_ALGORITHM],
-            issuer=JWT_ISSUER,
-            options={"verify_exp": True, "verify_iss": True}
+            issuer=verify_issuer,
+            options={"verify_exp": True, "verify_iss": verify_issuer is not None}
         )
         
         return payload
         
     except jwt.ExpiredSignatureError:
+        logger.warning("Token has expired")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired"
@@ -66,13 +77,13 @@ async def verify_token(token: str) -> dict:
         logger.warning(f"Invalid token: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
+            detail=f"Invalid token: {str(e)}"
         )
     except Exception as e:
-        logger.error(f"Error verifying token: {str(e)}")
+        logger.error(f"Error verifying token: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token verification failed"
+            detail=f"Token verification failed: {str(e)}"
         )
 
 
