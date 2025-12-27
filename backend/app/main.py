@@ -647,12 +647,15 @@ async def get_credentials_status(
             "client_id_preview": module_creds['client_id'][:10] + "..." if len(module_creds['client_id']) > 10 else module_creds['client_id']
         }
     else:
-        return {
+        logger.warning(f"[credentials-status] No credentials found for tenant {current_user['tenant_id']}")
+        result = {
             "available": False,
             "source": None,
             "message": "No se encontraron credenciales. Configure las credenciales en el panel de administración de la plataforma.",
             "client_id_preview": None
         }
+        logger.info(f"[credentials-status] Returning: {result}")
+        return result
 
 
 @app.post("/api/vegetation/config", status_code=status.HTTP_200_OK)
