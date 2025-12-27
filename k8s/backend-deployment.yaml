@@ -57,12 +57,10 @@ spec:
         - name: REDIS_CACHE_URL
           value: "redis://redis-service:6379/1"
         # Authentication (Keycloak)
+        # JWT_ISSUER must match the 'iss' claim in the JWT token from Keycloak
+        # Keycloak tokens have issuer: https://auth.artotxiki.com/realms/nekazari
         - name: JWT_ISSUER
-          valueFrom:
-            configMapKeyRef:
-              name: nekazari-config
-              key: KEYCLOAK_PUBLIC_URL
-              optional: true
+          value: "https://auth.artotxiki.com/realms/nekazari"
         - name: JWKS_URL
           value: "https://auth.artotxiki.com/realms/nekazari/.well-known/jwks.json"
         - name: JWT_ALGORITHM
