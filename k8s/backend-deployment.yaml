@@ -45,19 +45,7 @@ spec:
               name: postgresql-secret
               key: connection-string
         # Platform Database Configuration (for reading external_api_credentials)
-        # Platform Database Components (used to construct connection to platform DB)
-        - name: POSTGRES_HOST
-          value: "postgresql-service"
-        - name: POSTGRES_PORT
-          value: "5432"
-        - name: POSTGRES_USER
-          value: "timescale"
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: postgresql-secret
-              key: password
-              optional: true
+        # Platform Database Name (used to construct connection to platform DB from DATABASE_URL)
         - name: PLATFORM_DATABASE_NAME
           value: "fiware_history"
         # Redis Configuration (Celery + Cache)
