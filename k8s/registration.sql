@@ -123,3 +123,5 @@ INSERT INTO marketplace_modules (
 --    ON CONFLICT (tenant_id, module_id) DO UPDATE SET is_enabled = true;
 -- =============================================================================
 
+
+

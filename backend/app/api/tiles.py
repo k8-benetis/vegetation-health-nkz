@@ -18,7 +18,7 @@ from app.middleware.auth import require_auth
 from app.database import get_db_with_tenant
 from app.models import VegetationIndexCache, VegetationScene
 from uuid import UUID
-from app.services.storage import create_storage_service
+from app.services.storage import create_storage_service, generate_tenant_bucket_name
 from app.services.cache import get_tile_cache
 from app.models import VegetationConfig
 from sqlalchemy.orm import Session
@@ -241,20 +241,23 @@ async def get_tile(
                 VegetationConfig.tenant_id == current_user['tenant_id']
             ).first()
             
+            # Generate bucket name automatically based on tenant_id (security)
+            bucket_name = generate_tenant_bucket_name(current_user['tenant_id'])
+            
             storage = create_storage_service(
                 storage_type=config.storage_type if config else 's3',
-                default_bucket=config.storage_bucket if config else None
+                default_bucket=bucket_name
             )
             
             # Check if tile exists
-            if storage.file_exists(tile_path, config.storage_bucket if config else None):
+            if storage.file_exists(tile_path, bucket_name):
                 # Download and return
                 import tempfile
                 with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
                     tmp_path = tmp_file.name
                 
                 try:
-                    storage.download_file(tile_path, tmp_path, config.storage_bucket if config else None)
+                    storage.download_file(tile_path, tmp_path, bucket_name)
                     with open(tmp_path, 'rb') as f:
                         tile_data = f.read()
                     return Response(content=tile_data, media_type="image/png")
@@ -269,16 +272,19 @@ async def get_tile(
                 VegetationConfig.tenant_id == current_user['tenant_id']
             ).first()
             
+            # Generate bucket name automatically based on tenant_id (security)
+            bucket_name = generate_tenant_bucket_name(current_user['tenant_id'])
+            
             storage = create_storage_service(
                 storage_type=config.storage_type if config else 's3',
-                default_bucket=config.storage_bucket if config else None
+                default_bucket=bucket_name
             )
             
             tile_data = generate_tile_from_cog(
                 cache_entry.result_raster_path,
                 z, x, y,
                 storage,
-                config.storage_bucket if config else None
+                bucket_name
             )
             
             # Cache the generated tile for future requests (use scene.id for cache key)

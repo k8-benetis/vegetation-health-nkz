@@ -12,8 +12,9 @@ from pathlib import Path
 
 from app.celery_app import celery_app
 from app.models import VegetationJob, VegetationScene, VegetationConfig
-from app.services.storage import create_storage_service
+from app.services.storage import create_storage_service, generate_tenant_bucket_name
 from app.services.copernicus_client import CopernicusDataSpaceClient
+from app.services.platform_credentials import get_copernicus_credentials_with_fallback
 from app.database import get_db_session
 
 logger = logging.getLogger(__name__)
@@ -47,15 +48,24 @@ def download_sentinel2_scene(self, job_id: str, tenant_id: str, parameters: Dict
             VegetationConfig.tenant_id == tenant_id
         ).first()
         
-        if not config or not config.copernicus_client_id:
-            raise ValueError("Copernicus credentials not configured for tenant")
+        # Get Copernicus credentials from platform (preferred) or module config (fallback)
+        creds = get_copernicus_credentials_with_fallback(
+            db=db,
+            fallback_client_id=config.copernicus_client_id if config else None,
+            fallback_client_secret=config.copernicus_client_secret_encrypted if config else None
+        )
         
-        # Initialize Copernicus client
-        # Note: In production, decrypt the secret
-        client_secret = config.copernicus_client_secret_encrypted  # TODO: Decrypt
-        copernicus_client = CopernicusDataSpaceClient(
-            client_id=config.copernicus_client_id,
-            client_secret=client_secret
+        if not creds:
+            raise ValueError(
+                "Copernicus credentials not available. "
+                "Please configure credentials in the platform admin panel or in module settings."
+            )
+        
+        # Initialize Copernicus client with credentials from platform or module config
+        copernicus_client = CopernicusDataSpaceClient()
+        copernicus_client.set_credentials(
+            client_id=creds['client_id'],
+            client_secret=creds['client_secret']
         )
         
         # Update progress
@@ -127,17 +137,20 @@ def download_sentinel2_scene(self, job_id: str, tenant_id: str, parameters: Dict
         
         self.update_state(state='PROGRESS', meta={'progress': 70, 'message': 'Uploading to storage'})
         
+        # Generate bucket name automatically based on tenant_id (security: prevents bucket name conflicts)
+        bucket_name = generate_tenant_bucket_name(tenant_id)
+        
         # Get storage service
         storage = create_storage_service(
             storage_type=config.storage_type,
-            default_bucket=config.storage_bucket
+            default_bucket=bucket_name
         )
         
         # Upload bands to storage
         storage_band_paths = {}
         for band, local_path in band_paths.items():
             remote_path = f"{config.storage_path}scenes/{scene_id}/{band}.tif"
-            storage.upload_file(local_path, remote_path, config.storage_bucket)
+            storage.upload_file(local_path, remote_path, bucket_name)
             storage_band_paths[band] = remote_path
             
             # Clean up local file
@@ -153,7 +166,7 @@ def download_sentinel2_scene(self, job_id: str, tenant_id: str, parameters: Dict
             footprint=None,  # TODO: Convert geometry to PostGIS
             cloud_coverage=str(best_scene['cloud_cover']),
             storage_path=f"{config.storage_path}scenes/{scene_id}/",
-            storage_bucket=config.storage_bucket,
+            storage_bucket=bucket_name,  # Auto-generated from tenant_id
             bands=storage_band_paths,
             job_id=job.id
         )

@@ -36,6 +36,57 @@ export class VegetationApiClient {
     return response as VegetationJob;
   }
 
+  async getJobDetails(jobId: string): Promise<{
+    job: VegetationJob;
+    index_stats?: {
+      mean: number;
+      min: number;
+      max: number;
+      std_dev: number;
+      pixel_count: number;
+    };
+    timeseries?: Array<{
+      date: string;
+      index_type: string;
+      mean_value: number;
+      min_value: number;
+      max_value: number;
+      std_dev: number;
+    }>;
+    scene_info?: {
+      id: string;
+      sensing_date: string;
+      cloud_coverage: number;
+      scene_id: string;
+    };
+  }> {
+    const response = await this.client.get(`/jobs/${jobId}/details`);
+    return response as {
+      job: VegetationJob;
+      index_stats?: {
+        mean: number;
+        min: number;
+        max: number;
+        std_dev: number;
+        pixel_count: number;
+      };
+      timeseries?: Array<{
+        date: string;
+        index_type: string;
+        mean_value: number;
+        min_value: number;
+        max_value: number;
+        std_dev: number;
+      }>;
+      scene_info?: {
+        id: string;
+        sensing_date: string;
+        cloud_coverage: number;
+        scene_id: string;
+      };
+    };
+  }
+
   async listJobs(status?: string, limit = 50, offset = 0): Promise<{ jobs: VegetationJob[]; total: number }> {
     const params = new URLSearchParams();
     if (status) params.append('status', status);
@@ -119,6 +170,21 @@ export class VegetationApiClient {
       plan: string;
       volume: { used_ha: number; limit_ha: number };
       frequency: { used_jobs_today: number; limit_jobs_today: number };
+    };
+  }
+
+  async getCredentialsStatus(): Promise<{
+    available: boolean;
+    source: 'platform' | 'module' | null;
+    message: string;
+    client_id_preview?: string;
+  }> {
+    const response = await this.client.get('/config/credentials-status');
+    return response as {
+      available: boolean;
+      source: 'platform' | 'module' | null;
+      message: string;
+      client_id_preview?: string;
     };
   }
 }

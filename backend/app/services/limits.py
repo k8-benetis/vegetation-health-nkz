@@ -80,6 +80,7 @@ class LimitsValidator:
                 'daily_process_jobs_limit': limits.daily_process_jobs_limit or DEFAULT_DAILY_PROCESS_JOBS,
                 'daily_calculate_jobs_limit': limits.daily_calculate_jobs_limit or DEFAULT_DAILY_CALCULATE_JOBS,
                 'plan_type': limits.plan_type,
+                'plan_name': limits.plan_name,
             }
         else:
             # Use defaults (safe fallback)
@@ -92,7 +93,8 @@ class LimitsValidator:
                 'daily_download_jobs_limit': DEFAULT_DAILY_DOWNLOAD_JOBS,
                 'daily_process_jobs_limit': DEFAULT_DAILY_PROCESS_JOBS,
                 'daily_calculate_jobs_limit': DEFAULT_DAILY_CALCULATE_JOBS,
-                'plan_type': 'basic',
+                'plan_type': 'unconfigured',  # Changed from 'basic' to indicate not configured
+                'plan_name': None,  # No plan name when using defaults
             }
     
     def _get_rate_limit_key(self, job_type: str, date_str: Optional[str] = None) -> str:
@@ -286,7 +288,16 @@ class LimitsValidator:
                     pass
         
         # Get plan type
-        plan_type = self.limits.get('plan_type', 'basic').upper()
+        plan_type_raw = self.limits.get('plan_type', 'unconfigured')
+        plan_name = self.limits.get('plan_name')
+        
+        # Format plan type for display
+        if plan_type_raw == 'unconfigured':
+            plan_type = 'NO_CONFIGURADO'
+        elif plan_name:
+            plan_type = plan_name.upper()
+        else:
+            plan_type = plan_type_raw.upper()
         
         # Calculate daily jobs limit (sum of all job type limits)
         daily_jobs_limit = (

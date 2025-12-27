@@ -46,3 +46,5 @@ echo "  docker run -p 80:80 vegetation-prime-frontend:${VERSION}"
 
 cd ..
 
+
+

@@ -42,3 +42,5 @@ declare module '@nekazari/sdk' {
   export function useTranslation(namespace?: string): TranslationContextValue;
 }
 
+
+

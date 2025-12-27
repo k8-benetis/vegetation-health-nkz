@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Key, Database, Cloud, Save, Clock, CheckCircle, XCircle, Loader2, TrendingUp } from 'lucide-react';
+import { Settings, Key, Database, Cloud, Save, Clock, CheckCircle, XCircle, Loader2, TrendingUp, AlertCircle } from 'lucide-react';
 import { useUIKit } from '../../hooks/useUIKit';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
@@ -26,12 +26,37 @@ export const ConfigPage: React.FC = () => {
     volume?: { used_ha: number; limit_ha: number };
     frequency?: { used_jobs_today: number; limit_jobs_today: number };
   } | null>(null);
+  const [credentialsStatus, setCredentialsStatus] = useState<{
+    available: boolean;
+    source: 'platform' | 'module' | null;
+    message: string;
+    client_id_preview?: string;
+  } | null>(null);
+  const [credentialsLoading, setCredentialsLoading] = useState(false);
 
   useEffect(() => {
     loadConfig();
     loadRecentJobs();
     loadUsage();
+    loadCredentialsStatus();
   }, []);
+
+  const loadCredentialsStatus = async () => {
+    try {
+      setCredentialsLoading(true);
+      const status = await api.getCredentialsStatus();
+      setCredentialsStatus(status);
+    } catch (err) {
+      console.error('Error loading credentials status:', err);
+      setCredentialsStatus({
+        available: false,
+        source: null,
+        message: 'Error al verificar el estado de las credenciales'
+      });
+    } finally {
+      setCredentialsLoading(false);
+    }
+  };
 
   const loadUsage = async () => {
     try {
@@ -114,8 +139,18 @@ export const ConfigPage: React.FC = () => {
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="w-5 h-5 text-gray-600" />
               <h2 className="text-xl font-semibold text-gray-900">Usage & Limits</h2>
-              <span className="ml-auto px-3 py-1 text-sm font-semibold bg-blue-100 text-blue-800 rounded-full">
-                {usage?.plan || 'Unknown'} Plan
+              <span className={`ml-auto px-3 py-1 text-sm font-semibold rounded-full ${
+                usage?.plan === 'ADMIN' 
+                  ? 'bg-purple-100 text-purple-800'
+                  : usage?.plan === 'NO_CONFIGURADO'
+                  ? 'bg-yellow-100 text-yellow-800'
+                  : 'bg-blue-100 text-blue-800'
+              }`}>
+                {usage?.plan === 'ADMIN' 
+                  ? 'Admin Plan'
+                  : usage?.plan === 'NO_CONFIGURADO'
+                  ? 'Plan No Configurado'
+                  : usage?.plan || 'Unknown Plan'}
               </span>
             </div>
 
@@ -127,29 +162,48 @@ export const ConfigPage: React.FC = () => {
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-gray-700">Monthly Hectares</span>
                     <span className="text-sm text-gray-600">
-                      {usage.volume.used_ha.toFixed(2)} / {usage.volume.limit_ha.toFixed(2)} Ha
+                      {usage.volume.used_ha.toFixed(2)} / {
+                        usage.volume.limit_ha >= 999999 
+                          ? '∞' 
+                          : usage.volume.limit_ha.toFixed(2)
+                      } Ha
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div
-                      className={`h-3 rounded-full transition-all ${
-                        (usage.volume.used_ha / usage.volume.limit_ha) >= 0.9
-                          ? 'bg-red-500'
-                          : (usage.volume.used_ha / usage.volume.limit_ha) >= 0.75
-                          ? 'bg-yellow-500'
-                          : 'bg-green-500'
-                      }`}
-                      style={{
-                        width: `${Math.min((usage.volume.used_ha / usage.volume.limit_ha) * 100, 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {((usage.volume.limit_ha - usage.volume.used_ha) / usage.volume.limit_ha * 100).toFixed(1)}% remaining this month
-                  </p>
+                  {usage.volume.limit_ha < 999999 ? (
+                    <>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div
+                          className={`h-3 rounded-full transition-all ${
+                            (usage.volume.used_ha / usage.volume.limit_ha) >= 0.9
+                              ? 'bg-red-500'
+                              : (usage.volume.used_ha / usage.volume.limit_ha) >= 0.75
+                              ? 'bg-yellow-500'
+                              : 'bg-green-500'
+                          }`}
+                          style={{
+                            width: `${Math.min((usage.volume.used_ha / usage.volume.limit_ha) * 100, 100)}%`,
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {((usage.volume.limit_ha - usage.volume.used_ha) / usage.volume.limit_ha * 100).toFixed(1)}% remaining this month
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Acceso ilimitado (Admin)
+                    </p>
+                  )}
                 </>
               ) : (
-                <p className="text-sm text-gray-500">Usage data not available</p>
+                <div className="text-sm">
+                  <p className="text-yellow-600 font-medium mb-1">Datos de uso no disponibles</p>
+                  <p className="text-gray-500 text-xs">
+                    {usage?.plan === 'NO_CONFIGURADO' 
+                      ? 'El plan no está configurado. Se están usando límites por defecto. Contacte al administrador para configurar los límites.'
+                      : 'Los límites no se han sincronizado desde la plataforma. Contacte al administrador.'}
+                  </p>
+                </div>
               )}
               </div>
 
@@ -182,7 +236,14 @@ export const ConfigPage: React.FC = () => {
                     </p>
                   </>
                 ) : (
-                  <p className="text-sm text-gray-500">Frequency usage data not available</p>
+                  <div className="text-sm">
+                    <p className="text-yellow-600 font-medium mb-1">Datos de frecuencia no disponibles</p>
+                    <p className="text-gray-500 text-xs">
+                      {usage?.plan === 'NO_CONFIGURADO' 
+                        ? 'El plan no está configurado. Se están usando límites por defecto.'
+                        : 'Los límites no se han sincronizado desde la plataforma.'}
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -201,42 +262,108 @@ export const ConfigPage: React.FC = () => {
           </div>
         )}
 
-        {/* Copernicus Credentials */}
+        {/* Copernicus Credentials Status */}
         <Card padding="lg" className="mb-6">
           <div className="flex items-center gap-2 mb-4">
             <Key className="w-5 h-5 text-gray-600" />
             <h2 className="text-xl font-semibold text-gray-900">Copernicus Data Space</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={loadCredentialsStatus}
+              disabled={credentialsLoading}
+              className="ml-auto"
+            >
+              {credentialsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verificar'}
+            </Button>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Client ID
-              </label>
-              <Input
-                type="text"
-                value={config.copernicus_client_id || ''}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, copernicus_client_id: e.target.value })}
-                placeholder="Enter Copernicus Client ID"
-                className="w-full"
-              />
+          {credentialsLoading ? (
+            <div className="flex items-center gap-2 text-gray-500 py-4">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <p>Verificando estado de credenciales...</p>
             </div>
+          ) : credentialsStatus ? (
+            <div className={`p-4 rounded-lg border ${
+              credentialsStatus.available
+                ? credentialsStatus.source === 'platform'
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-yellow-50 border-yellow-200'
+                : 'bg-red-50 border-red-200'
+            }`}>
+              <div className="flex items-start gap-3">
+                {credentialsStatus.available ? (
+                  credentialsStatus.source === 'platform' ? (
+                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  )
+                ) : (
+                  <XCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                )}
+                <div className="flex-1">
+                  <p className={`font-medium mb-1 ${
+                    credentialsStatus.available
+                      ? credentialsStatus.source === 'platform'
+                        ? 'text-green-900'
+                        : 'text-yellow-900'
+                      : 'text-red-900'
+                  }`}>
+                    {credentialsStatus.available
+                      ? credentialsStatus.source === 'platform'
+                        ? 'Credenciales Disponibles (Plataforma)'
+                        : 'Credenciales Disponibles (Módulo)'
+                      : 'Credenciales No Disponibles'
+                    }
+                  </p>
+                  <p className={`text-sm ${
+                    credentialsStatus.available
+                      ? credentialsStatus.source === 'platform'
+                        ? 'text-green-800'
+                        : 'text-yellow-800'
+                      : 'text-red-800'
+                  }`}>
+                    {credentialsStatus.message}
+                  </p>
+                  {credentialsStatus.available && credentialsStatus.client_id_preview && (
+                    <p className={`text-xs mt-2 font-mono ${
+                      credentialsStatus.source === 'platform'
+                        ? 'text-green-700'
+                        : 'text-yellow-700'
+                    }`}>
+                      Client ID: {credentialsStatus.client_id_preview}
+                    </p>
+                  )}
+                  {!credentialsStatus.available && (
+                    <div className="mt-3 text-xs text-red-700">
+                      <p className="font-medium mb-1">Acción requerida:</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Contacte al administrador de la plataforma para configurar las credenciales</li>
+                        <li>O configure credenciales específicas del módulo (configuración avanzada)</li>
+                      </ul>
+                    </div>
+                  )}
+                  {credentialsStatus.available && credentialsStatus.source === 'module' && (
+                    <div className="mt-3 text-xs text-yellow-700">
+                      <p className="font-medium mb-1">Recomendación:</p>
+                      <p>Se recomienda usar credenciales gestionadas por la plataforma para mayor seguridad y consistencia.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm text-gray-500 bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <p>No se pudo verificar el estado de las credenciales.</p>
+            </div>
+          )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Client Secret
-              </label>
-              <Input
-                type="password"
-                value={''} // Don't show existing secret
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, copernicus_client_secret: e.target.value })}
-                placeholder="Enter new Client Secret (leave blank to keep existing)"
-                className="w-full"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Leave blank to keep existing secret. Enter new value to update.
-              </p>
-            </div>
+          <div className="mt-4 text-xs text-gray-500 bg-gray-50 p-3 rounded border border-gray-200">
+            <p className="font-medium text-gray-700 mb-1">Información:</p>
+            <p>
+              Las credenciales de Copernicus Data Space se gestionan centralmente desde el panel de administración de la plataforma.
+              Haga clic en "Verificar" para comprobar el estado actual.
+            </p>
           </div>
         </Card>
 
@@ -326,17 +453,9 @@ export const ConfigPage: React.FC = () => {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Storage Bucket
-              </label>
-              <Input
-                type="text"
-                value={config.storage_bucket || ''}
-                onChange={(e) => setConfig({ ...config, storage_bucket: e.target.value })}
-                placeholder="Enter bucket name"
-                className="w-full"
-              />
+            <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded">
+              <p className="font-medium mb-1">Storage Bucket</p>
+              <p>El bucket se genera automáticamente basado en su tenant para garantizar seguridad y aislamiento de datos. No es necesario configurarlo manualmente.</p>
             </div>
           </div>
         </Card>

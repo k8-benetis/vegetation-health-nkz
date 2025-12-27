@@ -3,6 +3,7 @@ Storage service abstraction for S3/MinIO/Local storage.
 """
 
 import os
+import re
 from abc import ABC, abstractmethod
 from typing import BinaryIO, Optional
 from pathlib import Path
@@ -10,6 +11,48 @@ from pathlib import Path
 import boto3
 from botocore.exceptions import ClientError
 from botocore.config import Config
+
+
+def generate_tenant_bucket_name(tenant_id: str) -> str:
+    """
+    Generate a secure bucket name based on tenant_id.
+    
+    Bucket names must:
+    - Be 3-63 characters long
+    - Contain only lowercase letters, numbers, dots, and hyphens
+    - Start and end with a letter or number
+    - Not contain consecutive dots
+    
+    Args:
+        tenant_id: Tenant identifier
+        
+    Returns:
+        Sanitized bucket name: vegetation-prime-{sanitized_tenant_id}
+    """
+    # Sanitize tenant_id: remove special chars, convert to lowercase
+    sanitized = re.sub(r'[^a-z0-9-]', '', tenant_id.lower())
+    # Remove consecutive hyphens
+    sanitized = re.sub(r'-+', '-', sanitized)
+    # Remove leading/trailing hyphens
+    sanitized = sanitized.strip('-')
+    # Ensure it's not empty
+    if not sanitized:
+        sanitized = 'default'
+    
+    # Generate bucket name
+    bucket_name = f"vegetation-prime-{sanitized}"
+    
+    # Ensure length constraints (S3 bucket names: 3-63 chars)
+    if len(bucket_name) > 63:
+        # Truncate and add hash suffix
+        hash_suffix = str(abs(hash(tenant_id)))[:8]
+        bucket_name = f"veg-{sanitized[:50]}-{hash_suffix}"
+    
+    # Ensure minimum length
+    if len(bucket_name) < 3:
+        bucket_name = f"veg-{sanitized}"
+    
+    return bucket_name
 
 
 class StorageService(ABC):

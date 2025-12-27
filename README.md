@@ -62,7 +62,13 @@ npm run build
 
 ### Initial Configuration
 
-1. **Install Module for Tenant** (REQUIRED):
+1. **Configure Copernicus Credentials** (REQUIRED):
+   - Credentials are managed centrally by the platform administrator
+   - Access: Platform Admin Panel → External API Credentials → Copernicus CDSE
+   - The module automatically uses platform-managed credentials
+   - See [Platform Credentials Documentation](docs/PLATFORM_CREDENTIALS.md) for details
+
+2. **Install Module for Tenant** (REQUIRED):
    ```sql
    -- Replace 'YOUR_TENANT_ID' with actual tenant ID
    INSERT INTO tenant_installed_modules (tenant_id, module_id, is_enabled, installed_by)
@@ -614,6 +620,15 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
+---
+
+## Documentation
+
+- **[User Manual](docs/USER_MANUAL.md)**: Complete user guide covering all features, pages, and workflows
+- **[Quick Reference](docs/QUICK_REFERENCE.md)**: Quick reference guide for common tasks
+- **[Testing Guide](docs/TESTING_GUIDE.md)**: Guide for testing and development
+- **[Build Strategy](docs/BUILD_STRATEGY.md)**: Docker image build and deployment strategy
 
 ---
 

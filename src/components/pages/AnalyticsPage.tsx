@@ -7,6 +7,7 @@ import { BarChart3, TrendingUp, Calendar, Filter } from 'lucide-react';
 import { useUIKit } from '../../hooks/useUIKit';
 import { Select } from '../ui/Select';
 import { useVegetationApi } from '../../services/api';
+import { JobDetailsModal } from '../JobDetailsModal';
 import type { VegetationJob } from '../../types';
 
 export const AnalyticsPage: React.FC = () => {
@@ -16,6 +17,8 @@ export const AnalyticsPage: React.FC = () => {
   const [jobs, setJobs] = useState<VegetationJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     loadJobs();
@@ -133,7 +136,14 @@ export const AnalyticsPage: React.FC = () => {
                 </thead>
                 <tbody>
                   {jobs.map((job) => (
-                    <tr key={job.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <tr
+                      key={job.id}
+                      className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                      onClick={() => {
+                        setSelectedJobId(job.id);
+                        setIsModalOpen(true);
+                      }}
+                    >
                       <td className="py-3 px-4 text-sm text-gray-900 font-mono">
                         {job.id.substring(0, 8)}...
                       </td>
@@ -174,6 +184,18 @@ export const AnalyticsPage: React.FC = () => {
             </div>
           )}
         </Card>
+
+        {/* Job Details Modal */}
+        {selectedJobId && (
+          <JobDetailsModal
+            jobId={selectedJobId}
+            isOpen={isModalOpen}
+            onClose={() => {
+              setIsModalOpen(false);
+              setSelectedJobId(null);
+            }}
+          />
+        )}
       </div>
     </div>
   );

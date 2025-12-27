@@ -74,3 +74,5 @@ SELECT
         ELSE '❌ Installation failed - check logs'
     END as status;
 
+
+

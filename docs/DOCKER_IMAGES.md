@@ -180,3 +180,5 @@ The GitHub Actions workflow (`.github/workflows/docker-publish.yml`) automatical
 
 No additional configuration needed - it works out of the box!
 
+
+

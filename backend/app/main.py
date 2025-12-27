@@ -107,7 +107,7 @@ class ConfigUpdateRequest(BaseModel):
     cloud_coverage_threshold: Optional[float] = None
     auto_process: Optional[bool] = None
     storage_type: Optional[str] = None
-    storage_bucket: Optional[str] = None
+    # NOTE: storage_bucket removed - now auto-generated from tenant_id for security
 
 
 class IndexCalculationRequest(BaseModel):
@@ -295,6 +295,115 @@ async def get_job(
     )
 
 
+class JobDetailsResponse(BaseModel):
+    """Response model for job details with statistics."""
+    job: JobResponse
+    index_stats: Optional[Dict[str, Any]] = None
+    timeseries: Optional[List[Dict[str, Any]]] = None
+    scene_info: Optional[Dict[str, Any]] = None
+
+
+@app.get("/api/vegetation/jobs/{job_id}/details", response_model=JobDetailsResponse)
+async def get_job_details(
+    job_id: UUID,
+    current_user: dict = Depends(require_auth),
+    db: Session = Depends(lambda: next(get_db_with_tenant(current_user['tenant_id'])))
+):
+    """Get detailed job information including statistics and timeseries."""
+    from app.models import VegetationIndexCache, VegetationScene
+    
+    # Get job
+    job = db.query(VegetationJob).filter(
+        VegetationJob.id == job_id,
+        VegetationJob.tenant_id == current_user['tenant_id']
+    ).first()
+    
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+    
+    job_response = JobResponse(
+        id=str(job.id),
+        tenant_id=job.tenant_id,
+        job_type=job.job_type,
+        status=job.status,
+        progress_percentage=job.progress_percentage,
+        progress_message=job.progress_message,
+        created_at=job.created_at,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+        result=job.result,
+        error_message=job.error_message
+    )
+    
+    # Get index statistics if job is completed and has result
+    index_stats = None
+    scene_info = None
+    
+    if job.status == 'completed' and job.result:
+        result = job.result if isinstance(job.result, dict) else {}
+        
+        # Extract statistics from result
+        if 'statistics' in result:
+            stats = result['statistics']
+            index_stats = {
+                'mean': float(stats.get('mean', 0)) if stats.get('mean') is not None else None,
+                'min': float(stats.get('min', 0)) if stats.get('min') is not None else None,
+                'max': float(stats.get('max', 0)) if stats.get('max') is not None else None,
+                'std_dev': float(stats.get('std', 0)) if stats.get('std') is not None else None,
+                'pixel_count': stats.get('pixel_count', 0) if stats.get('pixel_count') is not None else None,
+            }
+        
+        # Get scene info if available
+        if 'scene_id' in result:
+            scene_id = result['scene_id']
+            scene = db.query(VegetationScene).filter(
+                VegetationScene.id == scene_id,
+                VegetationScene.tenant_id == current_user['tenant_id']
+            ).first()
+            
+            if scene:
+                scene_info = {
+                    'id': str(scene.id),
+                    'sensing_date': scene.sensing_date.isoformat() if scene.sensing_date else None,
+                    'cloud_coverage': float(scene.cloud_coverage) if scene.cloud_coverage else None,
+                    'scene_id': scene.scene_id,
+                }
+    
+    # Get timeseries if job has entity_id
+    timeseries = None
+    if job.entity_id:
+        try:
+            # Get all index calculations for this entity
+            indices = db.query(VegetationIndexCache).filter(
+                VegetationIndexCache.entity_id == job.entity_id,
+                VegetationIndexCache.tenant_id == current_user['tenant_id']
+            ).order_by(VegetationIndexCache.calculated_at.desc()).limit(50).all()
+            
+            if indices:
+                timeseries = []
+                for idx in indices:
+                    timeseries.append({
+                        'date': idx.calculated_at,
+                        'index_type': idx.index_type,
+                        'mean_value': float(idx.mean_value) if idx.mean_value is not None else None,
+                        'min_value': float(idx.min_value) if idx.min_value is not None else None,
+                        'max_value': float(idx.max_value) if idx.max_value is not None else None,
+                        'std_dev': float(idx.std_dev) if idx.std_dev is not None else None,
+                    })
+        except Exception as e:
+            logger.warning(f"Error fetching timeseries: {e}")
+    
+    return JobDetailsResponse(
+        job=job_response,
+        index_stats=index_stats,
+        timeseries=timeseries,
+        scene_info=scene_info
+    )
+
+
 @app.get("/api/vegetation/jobs")
 async def list_jobs(
     status_filter: Optional[str] = None,
@@ -479,6 +588,65 @@ async def get_timeseries(
     }
 
 
+@app.get("/api/vegetation/config/credentials-status")
+async def get_credentials_status(
+    current_user: dict = Depends(require_auth),
+    db: Session = Depends(lambda: next(get_db_with_tenant(current_user['tenant_id'])))
+):
+    """Check Copernicus credentials availability status.
+    
+    Returns information about whether credentials are available from platform
+    or module-specific configuration.
+    """
+    from app.services.platform_credentials import get_copernicus_credentials_with_fallback
+    from app.models import VegetationConfig
+    
+    # Get module config for fallback check
+    config = db.query(VegetationConfig).filter(
+        VegetationConfig.tenant_id == current_user['tenant_id']
+    ).first()
+    
+    # Try to get credentials
+    platform_creds = None
+    module_creds = None
+    
+    try:
+        from app.services.platform_credentials import get_copernicus_credentials
+        platform_creds = get_copernicus_credentials(db)
+    except Exception as e:
+        logger.warning(f"Error checking platform credentials: {e}")
+    
+    # Check module-specific credentials
+    if config and config.copernicus_client_id and config.copernicus_client_secret_encrypted:
+        module_creds = {
+            'client_id': config.copernicus_client_id,
+            'client_secret': config.copernicus_client_secret_encrypted
+        }
+    
+    # Determine status
+    if platform_creds:
+        return {
+            "available": True,
+            "source": "platform",
+            "message": "Credenciales disponibles desde la plataforma",
+            "client_id_preview": platform_creds['client_id'][:10] + "..." if len(platform_creds['client_id']) > 10 else platform_creds['client_id']
+        }
+    elif module_creds:
+        return {
+            "available": True,
+            "source": "module",
+            "message": "Credenciales disponibles desde configuración del módulo (fallback)",
+            "client_id_preview": module_creds['client_id'][:10] + "..." if len(module_creds['client_id']) > 10 else module_creds['client_id']
+        }
+    else:
+        return {
+            "available": False,
+            "source": None,
+            "message": "No se encontraron credenciales. Configure las credenciales en el panel de administración de la plataforma.",
+            "client_id_preview": None
+        }
+
+
 @app.post("/api/vegetation/config")
 async def update_config(
     request: ConfigUpdateRequest,
@@ -495,6 +663,8 @@ async def update_config(
         db.add(config)
     
     # Update fields
+    # NOTE: Copernicus credentials are now managed by the platform (external_api_credentials table)
+    # Module-specific credentials are kept as fallback only
     if request.copernicus_client_id is not None:
         config.copernicus_client_id = request.copernicus_client_id
     if request.copernicus_client_secret is not None:
@@ -508,8 +678,8 @@ async def update_config(
         config.auto_process = request.auto_process
     if request.storage_type is not None:
         config.storage_type = request.storage_type
-    if request.storage_bucket is not None:
-        config.storage_bucket = request.storage_bucket
+    # NOTE: storage_bucket is now auto-generated from tenant_id for security
+    # Users cannot specify bucket names to prevent conflicts and security issues
     
     db.commit()
     db.refresh(config)
@@ -607,9 +777,41 @@ async def get_current_usage(
     current_user: dict = Depends(require_auth),
     db: Session = Depends(lambda: next(get_db_with_tenant(current_user['tenant_id'])))
 ):
-    """Get current usage statistics for the tenant."""
+    """Get current usage statistics for the tenant.
+    
+    Special handling for PlatformAdmin users (unlimited access).
+    """
+    # Handle PlatformAdmin specially - unlimited access
+    user_roles = current_user.get('roles', []) or []
+    if 'PlatformAdmin' in user_roles or current_user.get('role') == 'PlatformAdmin':
+        # Return a very high limit instead of inf (JSON doesn't support inf)
+        return UsageResponse(
+            plan='ADMIN',
+            volume={
+                'used_ha': 0.0,
+                'limit_ha': 999999.0  # Effectively unlimited
+            },
+            frequency={
+                'used_jobs_today': 0,
+                'limit_jobs_today': 999999
+            }
+        )
+    
     validator = LimitsValidator(db, current_user['tenant_id'])
     usage = validator.get_current_usage()
+    
+    # Improve plan name if using defaults
+    from app.models import VegetationPlanLimits
+    if usage.get('plan') == 'BASIC' and not validator.limits.get('plan_name'):
+        # Check if limits were loaded from DB or are defaults
+        limits_in_db = db.query(VegetationPlanLimits).filter(
+            VegetationPlanLimits.tenant_id == current_user['tenant_id'],
+            VegetationPlanLimits.is_active == True
+        ).first()
+        
+        if not limits_in_db:
+            # Using defaults - plan not configured
+            usage['plan'] = 'NO_CONFIGURADO'
     
     return UsageResponse(**usage)
 

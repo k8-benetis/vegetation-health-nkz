@@ -5,7 +5,7 @@ Copernicus Data Space Ecosystem client for downloading Sentinel-2 data.
 import logging
 import os
 from typing import List, Dict, Any, Optional
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 import requests
 from requests.auth import HTTPBasicAuth
@@ -21,8 +21,30 @@ class CopernicusDataSpaceClient:
     OAUTH_URL = f"{BASE_URL}/oauth/token"
     CATALOG_URL = f"{BASE_URL}/api/v1/catalog/1.0.0"
     
-    def __init__(self, client_id: str, client_secret: str):
+    def __init__(self, client_id: Optional[str] = None, client_secret: Optional[str] = None):
         """Initialize Copernicus Data Space client.
+        
+        Args:
+            client_id: OAuth2 client ID (optional if using platform credentials)
+            client_secret: OAuth2 client secret (optional if using platform credentials)
+            
+        Note:
+            If client_id and client_secret are not provided, the client will attempt
+            to retrieve credentials from the platform's central storage via
+            get_copernicus_credentials(). This allows modules to use platform-managed
+            credentials without requiring user configuration.
+        """
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.access_token: Optional[str] = None
+        self.token_expires_at: Optional[datetime] = None
+        
+        # If credentials not provided, they should be set via set_credentials() before use
+        if not client_id or not client_secret:
+            logger.info("Copernicus client initialized without credentials - will use platform credentials")
+    
+    def set_credentials(self, client_id: str, client_secret: str):
+        """Set credentials for the client (useful when loading from platform).
         
         Args:
             client_id: OAuth2 client ID
@@ -30,15 +52,26 @@ class CopernicusDataSpaceClient:
         """
         self.client_id = client_id
         self.client_secret = client_secret
-        self.access_token: Optional[str] = None
-        self.token_expires_at: Optional[datetime] = None
+        # Clear cached token when credentials change
+        self.access_token = None
+        self.token_expires_at = None
     
     def _get_access_token(self) -> str:
         """Get OAuth2 access token (with caching).
         
         Returns:
             Access token string
+            
+        Raises:
+            ValueError: If credentials are not set
         """
+        if not self.client_id or not self.client_secret:
+            raise ValueError(
+                "Copernicus credentials not set. "
+                "Either provide them in __init__ or use set_credentials() method. "
+                "You can also use get_copernicus_credentials() from platform_credentials service."
+            )
+        
         # Check if token is still valid (with 5 min buffer)
         if self.access_token and self.token_expires_at:
             if datetime.utcnow() < (self.token_expires_at - timedelta(minutes=5)):

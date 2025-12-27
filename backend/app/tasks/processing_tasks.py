@@ -10,7 +10,7 @@ import uuid
 from app.celery_app import celery_app
 from app.models import VegetationJob, VegetationScene, VegetationIndexCache
 from app.services.processor import VegetationIndexProcessor
-from app.services.storage import create_storage_service
+from app.services.storage import create_storage_service, generate_tenant_bucket_name
 from app.database import get_db_session
 
 logger = logging.getLogger(__name__)
@@ -59,9 +59,20 @@ def calculate_vegetation_index(
         # Update progress
         self.update_state(state='PROGRESS', meta={'progress': 10, 'message': 'Loading bands'})
         
-        # Get storage service
-        # TODO: Get from config
-        storage = create_storage_service('s3')
+        # Generate bucket name automatically based on tenant_id (security: prevents bucket name conflicts)
+        bucket_name = generate_tenant_bucket_name(tenant_id)
+        
+        # Get storage service - use scene's storage_type if available, otherwise default to s3
+        from app.models import VegetationConfig
+        config = db.query(VegetationConfig).filter(
+            VegetationConfig.tenant_id == tenant_id
+        ).first()
+        storage_type = config.storage_type if config else 's3'
+        
+        storage = create_storage_service(
+            storage_type=storage_type,
+            default_bucket=bucket_name
+        )
         
         # Load band paths
         band_paths = scene.bands or {}
@@ -96,8 +107,8 @@ def calculate_vegetation_index(
         output_path = f"{scene.storage_path}/indices/{index_type}.tif"
         processor.save_index_raster(index_array, output_path)
         
-        # Upload to storage
-        storage.upload_file(output_path, output_path, scene.storage_bucket)
+        # Upload to storage (use auto-generated bucket for security)
+        storage.upload_file(output_path, output_path, bucket_name)
         
         # Create cache entry
         cache_entry = VegetationIndexCache(
