@@ -58,11 +58,12 @@ spec:
           value: "redis://redis-service:6379/1"
         # Authentication (Keycloak)
         # JWT_ISSUER must match the 'iss' claim in the JWT token from Keycloak
-        # Keycloak tokens have issuer: https://auth.artotxiki.com/realms/nekazari
+        # Keycloak with KC_HTTP_RELATIVE_PATH=/auth uses: https://auth.artotxiki.com/auth/realms/nekazari
         - name: JWT_ISSUER
-          value: "https://auth.artotxiki.com/realms/nekazari"
+          value: "https://auth.artotxiki.com/auth/realms/nekazari"
+        # JWKS URL for Keycloak with /auth path: /auth/realms/{realm}/protocol/openid-connect/certs
         - name: JWKS_URL
-          value: "https://auth.artotxiki.com/realms/nekazari/.well-known/jwks.json"
+          value: "https://auth.artotxiki.com/auth/realms/nekazari/protocol/openid-connect/certs"
         - name: JWT_ALGORITHM
           value: "RS256"
         # Service-to-Service Authentication
