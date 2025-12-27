@@ -3,6 +3,41 @@ import react from '@vitejs/plugin-react';
 import federation from '@originjs/vite-plugin-federation';
 import path from 'path';
 
+// Plugin to replace react/jsx-runtime imports with bundled version
+// This runs after the code is transformed but before Module Federation processes it
+function replaceJsxRuntime() {
+  let jsxRuntimeFileName = null;
+  
+  return {
+    name: 'replace-jsx-runtime',
+    generateBundle(options, bundle) {
+      // First pass: find the jsx-runtime file name
+      Object.keys(bundle).forEach(fileName => {
+        if (fileName.includes('jsx-runtime')) {
+          jsxRuntimeFileName = fileName;
+        }
+      });
+      
+      // Second pass: replace imports with relative path
+      Object.keys(bundle).forEach(fileName => {
+        const chunk = bundle[fileName];
+        if (chunk.type === 'chunk' && chunk.code && jsxRuntimeFileName) {
+          // Replace bare specifier imports with relative imports to the bundled file
+          const relativePath = `./${jsxRuntimeFileName}`;
+          chunk.code = chunk.code.replace(
+            /from\s+['"]react\/jsx-runtime['"]/g,
+            `from '${relativePath}'`
+          );
+          chunk.code = chunk.code.replace(
+            /from\s+['"]react\/jsx-dev-runtime['"]/g,
+            `from '${relativePath}'`
+          );
+        }
+      });
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
@@ -10,6 +45,7 @@ export default defineConfig({
       // Use classic JSX runtime to avoid react/jsx-runtime dependency issues with Module Federation
       jsxRuntime: 'classic',
     }),
+    replaceJsxRuntime(),
     federation({
       name: 'vegetation_prime_module',
       filename: 'remoteEntry.js',
