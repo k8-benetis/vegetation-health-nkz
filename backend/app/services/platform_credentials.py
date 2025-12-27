@@ -20,8 +20,9 @@ def _get_platform_db_connection():
     via POSTGRES_URL environment variable (which points to the platform database).
     """
     # Get the module database URL and replace the database name with platform database name
+    # The platform database is 'nekazari' where external_api_credentials table is stored
     database_url = os.getenv('DATABASE_URL', '')
-    platform_db_name = os.getenv('PLATFORM_DATABASE_NAME', 'fiware_history')
+    platform_db_name = os.getenv('PLATFORM_DATABASE_NAME', 'nekazari')
     
     if not database_url:
         logger.warning("Cannot construct platform database URL: DATABASE_URL not set")

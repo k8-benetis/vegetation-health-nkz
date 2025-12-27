@@ -46,8 +46,9 @@ spec:
               key: postgres-url
         # Platform Database Configuration (for reading external_api_credentials)
         # Platform Database Name (used to construct connection to platform DB from DATABASE_URL)
+        # The external_api_credentials table is in the 'nekazari' database
         - name: PLATFORM_DATABASE_NAME
-          value: "fiware_history"
+          value: "nekazari"
         # Redis Configuration (Celery + Cache)
         - name: CELERY_BROKER_URL
           value: "redis://redis-service:6379/0"
