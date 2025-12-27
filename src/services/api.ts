@@ -203,82 +203,30 @@ export class VegetationApiClient {
   }
 }
 
-// Helper to get token from host's auth context
-function getAuthTokenFromHost(): string | undefined {
-  try {
-    // Try to access auth from host's window context (exposed by KeycloakAuthContext)
-    if (typeof window !== 'undefined') {
-      const hostAuth = (window as any).__nekazariAuthContext;
-      if (hostAuth && typeof hostAuth.getToken === 'function') {
-        const token = hostAuth.getToken();
-        console.log('[getAuthTokenFromHost] Got token from window.__nekazariAuthContext');
-        return token;
-      }
-    }
-  } catch (error) {
-    console.warn('[getAuthTokenFromHost] Error accessing host auth:', error);
-  }
-  return undefined;
-}
-
-function getTenantIdFromHost(): string | undefined {
-  try {
-    if (typeof window !== 'undefined') {
-      const hostAuth = (window as any).__nekazariAuthContext;
-      if (hostAuth && hostAuth.tenantId) {
-        console.log('[getTenantIdFromHost] Got tenantId from window.__nekazariAuthContext:', hostAuth.tenantId);
-        return hostAuth.tenantId;
-      }
-    }
-  } catch (error) {
-    console.warn('[getTenantIdFromHost] Error accessing host tenantId:', error);
-  }
-  return undefined;
-}
-
 // Hook for using API client
 export function useVegetationApi(): VegetationApiClient {
-  let auth: any = null;
-  let getToken: (() => string | undefined) | null = null;
-  let tenantId: string | undefined = undefined;
+  // Use SDK's useAuth which already handles window.__nekazariAuthContext
+  const auth = useAuth();
   
-  try {
-    auth = useAuth();
-    console.log('[useVegetationApi] useAuth result:', auth ? 'available' : 'undefined');
-    
-    if (auth) {
-      const { getToken: authGetToken, tenantId: authTenantId } = auth;
-      getToken = () => authGetToken();
-      tenantId = authTenantId;
-      console.log('[useVegetationApi] Using useAuth from SDK');
-    } else {
-      // Fallback: try to get from host's window context
-      console.log('[useVegetationApi] useAuth unavailable, trying window.__nekazariAuthContext');
-      getToken = getAuthTokenFromHost;
-      tenantId = getTenantIdFromHost();
-    }
-  } catch (error) {
-    console.error('[useVegetationApi] Error accessing useAuth:', error);
-    // Fallback: try to get from host's window context
-    getToken = getAuthTokenFromHost;
-    tenantId = getTenantIdFromHost();
-  }
-  
-  // Final fallback if nothing works
-  if (!getToken) {
-    console.warn('[useVegetationApi] No auth method available, using undefined fallback');
-    getToken = () => undefined;
+  // Log for debugging
+  if (!auth) {
+    console.warn('[useVegetationApi] useAuth returned undefined - API calls will fail without auth');
+  } else {
+    const token = auth.getToken();
+    const tenantId = auth.getTenantId();
+    console.log('[useVegetationApi] Auth available - token:', token ? `${token.substring(0, 20)}...` : 'undefined', 'tenantId:', tenantId);
   }
   
   return new VegetationApiClient(
     () => {
-      const token = getToken ? getToken() : undefined;
-      console.log('[useVegetationApi] getToken() returned:', token ? `${token.substring(0, 20)}...` : 'undefined');
+      const token = auth?.getToken();
+      if (!token) {
+        console.warn('[useVegetationApi] getToken() returned undefined - request will fail');
+      }
       return token;
     },
     () => {
-      console.log('[useVegetationApi] tenantId:', tenantId);
-      return tenantId;
+      return auth?.getTenantId();
     }
   );
 }
