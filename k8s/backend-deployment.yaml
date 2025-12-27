@@ -57,6 +57,7 @@ spec:
             secretKeyRef:
               name: postgresql-secret
               key: password
+              optional: true
         - name: PLATFORM_DATABASE_NAME
           value: "fiware_history"
         # Redis Configuration (Celery + Cache)
