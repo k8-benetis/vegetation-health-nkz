@@ -25,9 +25,12 @@ export const AnalyticsPage: React.FC = () => {
     try {
       setLoading(true);
       const data = await api.listJobs(statusFilter !== 'all' ? statusFilter : undefined);
-      setJobs(data.jobs);
+      // Defensive: Ensure jobs is always an array, even if API returns undefined
+      setJobs(data?.jobs || []);
     } catch (err) {
       console.error('Error loading jobs:', err);
+      // On error, set empty array to prevent crashes
+      setJobs([]);
     } finally {
       setLoading(false);
     }

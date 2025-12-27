@@ -115,7 +115,7 @@ export const ConfigPage: React.FC = () => {
               <TrendingUp className="w-5 h-5 text-gray-600" />
               <h2 className="text-xl font-semibold text-gray-900">Usage & Limits</h2>
               <span className="ml-auto px-3 py-1 text-sm font-semibold bg-blue-100 text-blue-800 rounded-full">
-                {usage.plan} Plan
+                {usage?.plan || 'Unknown'} Plan
               </span>
             </div>
 
