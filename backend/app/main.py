@@ -616,8 +616,12 @@ async def get_credentials_status(
         from app.services.platform_credentials import get_copernicus_credentials
         # get_copernicus_credentials now connects directly to platform database
         platform_creds = get_copernicus_credentials()
+        if platform_creds:
+            logger.info(f"Successfully retrieved platform credentials for tenant {current_user['tenant_id']}")
+        else:
+            logger.debug(f"No platform credentials found for tenant {current_user['tenant_id']}")
     except Exception as e:
-        logger.debug(f"Error checking platform credentials: {e}")
+        logger.warning(f"Error checking platform credentials for tenant {current_user['tenant_id']}: {e}")
     
     # Check module-specific credentials
     if config and config.copernicus_client_id and config.copernicus_client_secret_encrypted:
@@ -628,6 +632,7 @@ async def get_credentials_status(
     
     # Determine status
     if platform_creds:
+        logger.info(f"Platform credentials found for tenant {current_user['tenant_id']}: {platform_creds.get('client_id', 'N/A')[:15]}...")
         return {
             "available": True,
             "source": "platform",
