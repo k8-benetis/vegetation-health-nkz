@@ -6,7 +6,6 @@
 import React from 'react';
 import { Calculator, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { useIndexCalculation } from '../../hooks/useIndexCalculation';
-import { useUIKit } from '../../hooks/useUIKit';
 import { useVegetationContext } from '../../services/vegetationContext';
 
 interface CalculationButtonProps {
@@ -26,7 +25,7 @@ export const CalculationButton: React.FC<CalculationButtonProps> = ({
   size = 'md',
   className = '',
 }) => {
-  const { Button } = useUIKit();
+  // Button component not needed - using native button
   const { selectedIndex, selectedSceneId, selectedEntityId } = useVegetationContext();
   const { calculateIndex, isCalculating, error, success, resetState } = useIndexCalculation();
 
@@ -98,4 +97,5 @@ export const CalculationButton: React.FC<CalculationButtonProps> = ({
     </div>
   );
 };
+
 

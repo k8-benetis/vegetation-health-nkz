@@ -2,7 +2,7 @@
  * Global state context for Vegetation Prime module.
  */
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import type { VegetationIndexType } from '../types';
 
 interface VegetationContextType {

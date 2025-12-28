@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Leaf, Calendar, Settings, ExternalLink } from 'lucide-react';
+import { Leaf, Calendar, Settings } from 'lucide-react';
 import { useUIKit } from '../../hooks/useUIKit';
 import { useVegetationContext } from '../../services/vegetationContext';
 import { useVegetationApi } from '../../services/api';
@@ -32,11 +32,12 @@ export const VegetationLayerControl: React.FC<VegetationLayerControlProps> = ({
   onNavigateToAnalytics,
 }) => {
   // Get UI components safely from Host
-  const { Card, Button } = useUIKit();
+  const { Card } = useUIKit();
   const {
     selectedIndex,
     selectedDate,
     selectedSceneId,
+    selectedEntityId,
     setSelectedIndex,
     setSelectedDate,
   } = useVegetationContext();

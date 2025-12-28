@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { X, BarChart3, TrendingUp, Info, Calendar, Cloud } from 'lucide-react';
+import { X, BarChart3, TrendingUp, Info, Cloud } from 'lucide-react';
 import { useUIKit } from '../hooks/useUIKit';
 import { useVegetationApi } from '../services/api';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';

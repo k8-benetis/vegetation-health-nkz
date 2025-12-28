@@ -8,14 +8,6 @@
 import React, { useMemo } from 'react';
 import { BarChart3 } from 'lucide-react';
 
-interface HistogramData {
-  category: string;
-  count: number;
-  percentage: number;
-  color: string;
-  range: string;
-}
-
 interface DistributionHistogramProps {
   values: number[];
   indexType: string;
@@ -36,7 +28,6 @@ const VIGOR_CATEGORIES = [
 export const DistributionHistogram: React.FC<DistributionHistogramProps> = ({
   values,
   indexType,
-  bins = 6,
   className = '',
   height = 200,
 }) => {
@@ -171,4 +162,5 @@ export const DistributionHistogram: React.FC<DistributionHistogramProps> = ({
     </div>
   );
 };
+
 

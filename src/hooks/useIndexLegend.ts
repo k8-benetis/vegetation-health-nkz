@@ -26,7 +26,7 @@ interface LegendConfig {
  * Get color for a vegetation index value.
  * Uses standard color schemes for each index type.
  */
-export function getIndexColor(value: number, indexType: VegetationIndexType): string {
+export function getIndexColor(value: number, _indexType: VegetationIndexType): string {
   // Normalize value to 0-1 range (most indices are -1 to 1, but vegetation is typically 0-1)
   const normalized = Math.max(0, Math.min(1, (value + 1) / 2));
 

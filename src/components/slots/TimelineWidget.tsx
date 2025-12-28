@@ -4,11 +4,11 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Calendar, Cloud, CloudOff, Loader2, Filter } from 'lucide-react';
+import { Calendar, Loader2, Filter } from 'lucide-react';
 import { useUIKit } from '../../hooks/useUIKit';
 import { useVegetationContext } from '../../services/vegetationContext';
 import { useVegetationApi } from '../../services/api';
-import { CloudCoverIndicator, CloudCoverBadge } from '../widgets/CloudCoverIndicator';
+import { CloudCoverIndicator } from '../widgets/CloudCoverIndicator';
 import type { VegetationScene } from '../../types';
 
 interface TimelineWidgetProps {
@@ -31,7 +31,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filterClouds, setFilterClouds] = useState(true);
-  const [cloudThreshold, setCloudThreshold] = useState(20);
+  const [cloudThreshold] = useState(20);
 
   const effectiveEntityId = entityId || selectedEntityId;
 
@@ -69,21 +69,6 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
   const handleSceneClick = (scene: VegetationScene) => {
     setSelectedDate(scene.sensing_date);
     setSelectedSceneId(scene.id);
-  };
-
-  const getCloudCoverageColor = (coverage?: number): string => {
-    if (!coverage) return 'text-gray-400';
-    if (coverage < 10) return 'text-green-500';
-    if (coverage < 30) return 'text-yellow-500';
-    if (coverage < 50) return 'text-orange-500';
-    return 'text-red-500';
-  };
-
-  const getCloudCoverageIcon = (coverage?: number) => {
-    if (!coverage) return <CloudOff className="w-4 h-4" />;
-    if (coverage < 10) return <Cloud className="w-4 h-4 text-green-500" />;
-    if (coverage < 30) return <Cloud className="w-4 h-4 text-yellow-500" />;
-    return <Cloud className="w-4 h-4 text-red-500" />;
   };
 
   if (loading) {

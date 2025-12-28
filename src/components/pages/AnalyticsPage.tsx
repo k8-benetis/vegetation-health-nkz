@@ -22,13 +22,13 @@ import { TimeseriesChart } from '../analytics/TimeseriesChart';
 import { DistributionHistogram } from '../analytics/DistributionHistogram';
 import { IndexPillSelector } from '../widgets/IndexPillSelector';
 import { CalculationButton } from '../widgets/CalculationButton';
-import type { VegetationJob, VegetationIndexType, VegetationScene } from '../../types';
+import type { VegetationJob, VegetationScene } from '../../types';
 
 type TabType = 'calculations' | 'timeseries' | 'comparison' | 'advanced';
 
 export const AnalyticsPage: React.FC = () => {
   // Get UI components safely from Host
-  const { Card, Button } = useUIKit();
+  const { Card } = useUIKit();
   const api = useVegetationApi();
   const { selectedIndex, selectedEntityId, selectedDate, setSelectedIndex } = useVegetationContext();
   

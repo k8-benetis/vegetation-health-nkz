@@ -3,7 +3,6 @@
  */
 
 import { NKZClient } from '@nekazari/sdk';
-import { useAuth } from '@nekazari/sdk';
 import type {
   VegetationJob,
   VegetationConfig,
@@ -13,10 +12,14 @@ import type {
   VegetationScene,
 } from '../types';
 
-// Use absolute URL to ensure requests go to backend, not intercepted by host frontend
-const API_BASE_URL = (typeof window !== 'undefined' && window.__ENV__?.VITE_API_URL) 
-  ? `${window.__ENV__.VITE_API_URL}/api/vegetation`
-  : '/api/vegetation';
+// Extend Window interface for TypeScript
+declare global {
+  interface Window {
+    __ENV__?: {
+      VITE_API_URL?: string;
+    };
+  }
+}
 
 export class VegetationApiClient {
   private client: NKZClient;

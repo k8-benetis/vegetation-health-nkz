@@ -81,3 +81,4 @@ COMMENT ON COLUMN global_scene_cache.last_accessed_at IS 'Last time a tenant req
 COMMENT ON COLUMN global_scene_cache.is_valid IS 'Set to false if scene files are corrupted or missing';
 
 
+

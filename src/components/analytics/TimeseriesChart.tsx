@@ -59,7 +59,7 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   };
 
   // Helper to convert date to X coordinate
-  const dateToX = (date: string, index: number) => {
+  const dateToX = (_date: string, index: number) => {
     return chartPadding.left + (index / (sortedDates.length - 1 || 1)) * plotWidth;
   };
 
@@ -236,4 +236,5 @@ export const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     </div>
   );
 };
+
 
