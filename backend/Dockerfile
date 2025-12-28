@@ -60,27 +60,13 @@ RUN pip install --no-cache-dir \
     python-dateutil==2.8.2 \
     structlog==23.2.0
 
-# Stage 2: Geospatial dependencies (heavier, compile separately)
-# Install in order to handle dependencies correctly
+# Stage 2: Geospatial dependencies
+# Note: fiona and geopandas removed - not used in code, only rasterio is needed
+# This significantly reduces build time and eliminates ARM64 compilation issues
 RUN pip install --no-cache-dir \
     shapely==2.0.2 \
     pyproj==3.6.1 \
     rasterio==1.3.9
-
-# Install fiona - handle GDAL compatibility issues on ARM64
-# fiona 1.9.5 has a known compilation issue with newer GDAL versions
-# Solution: Use pre-built wheels when available, or patch the source code
-RUN pip install --no-cache-dir --prefer-binary fiona==1.9.5 || \
-    (pip download --no-deps fiona==1.9.5 && \
-     tar -xzf fiona-*.tar.gz && \
-     cd fiona-* && \
-     # Patch the incompatible pointer type issue
-     sed -i 's/__pyx_v_paths = CSLAddString(__pyx_v_paths, __pyx_v_path_c);/__pyx_v_paths = CSLAddString((char**)__pyx_v_paths, __pyx_v_path_c);/g' fiona/_env.c && \
-     pip install --no-cache-dir . && \
-     cd .. && rm -rf fiona-*)
-
-# Install geopandas (depends on fiona)
-RUN pip install --no-cache-dir geopandas==0.14.1
 
 # Stage 3: Sentinel-2 and remaining deps
 RUN pip install --no-cache-dir \
