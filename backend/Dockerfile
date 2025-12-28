@@ -61,12 +61,19 @@ RUN pip install --no-cache-dir \
     structlog==23.2.0
 
 # Stage 2: Geospatial dependencies (heavier, compile separately)
+# Install in order to handle dependencies correctly
 RUN pip install --no-cache-dir \
     shapely==2.0.2 \
     pyproj==3.6.1 \
-    rasterio==1.3.9 \
-    fiona==1.9.5 \
-    geopandas==0.14.1
+    rasterio==1.3.9
+
+# Install fiona with CFLAGS to handle GDAL compatibility issues on ARM64
+# The error is due to const char** vs char** incompatibility in fiona 1.9.5
+RUN CFLAGS="-Wno-incompatible-pointer-types" pip install --no-cache-dir fiona==1.9.5 || \
+    pip install --no-cache-dir fiona==1.9.5
+
+# Install geopandas (depends on fiona)
+RUN pip install --no-cache-dir geopandas==0.14.1
 
 # Stage 3: Sentinel-2 and remaining deps
 RUN pip install --no-cache-dir \
