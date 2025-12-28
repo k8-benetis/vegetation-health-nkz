@@ -337,4 +337,45 @@ class VegetationIndexProcessor:
         
         logger.info(f"Saved index raster to {output_path}")
         return output_path
+    
+    @staticmethod
+    def create_temporal_composite(
+        index_arrays: list[np.ndarray],
+        method: str = 'median'
+    ) -> np.ndarray:
+        """Create temporal composite from multiple index arrays using median (cloud-free).
+        
+        Args:
+            index_arrays: List of index arrays from different scenes (must be same shape)
+            method: Composite method ('median' or 'mean'). Median is recommended for cloud removal.
+            
+        Returns:
+            Composite index array
+        """
+        if not index_arrays:
+            raise ValueError("No index arrays provided for composite")
+        
+        if len(index_arrays) == 1:
+            return index_arrays[0]
+        
+        # Stack arrays (shape: [n_scenes, height, width])
+        stacked = np.stack(index_arrays, axis=0)
+        
+        # Replace NaN with -9999 for proper handling
+        stacked = np.where(np.isnan(stacked), -9999, stacked)
+        
+        if method == 'median':
+            # Median composite (best for cloud removal)
+            composite = np.median(stacked, axis=0)
+        elif method == 'mean':
+            # Mean composite
+            composite = np.mean(stacked, axis=0)
+        else:
+            raise ValueError(f"Unknown composite method: {method}")
+        
+        # Restore NaN for invalid pixels (where all scenes had -9999)
+        composite = np.where(composite == -9999, np.nan, composite)
+        
+        logger.info(f"Created {method} temporal composite from {len(index_arrays)} scenes")
+        return composite
 

@@ -85,11 +85,20 @@ def download_sentinel2_scene(self, job_id: str, tenant_id: str, parameters: Dict
         else:
             raise ValueError("Invalid bounds provided")
         
-        # Parse dates
+        # Parse dates with default to last 30 days if not provided
         if isinstance(start_date, str):
             start_date = date.fromisoformat(start_date)
+        elif start_date is None:
+            # Default: 30 days ago
+            start_date = date.today() - timedelta(days=30)
+            logger.info(f"No start_date provided, using default: {start_date} (30 days ago)")
+        
         if isinstance(end_date, str):
             end_date = date.fromisoformat(end_date)
+        elif end_date is None:
+            # Default: today
+            end_date = date.today()
+            logger.info(f"No end_date provided, using default: {end_date} (today)")
         
         # Search for scenes
         self.update_state(state='PROGRESS', meta={'progress': 20, 'message': 'Searching Copernicus catalog'})

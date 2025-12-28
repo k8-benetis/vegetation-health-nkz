@@ -199,6 +199,32 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({ jobId, isOpen,
                   </div>
                 )}
 
+                {/* Quality Info - Source Image Count for composites */}
+                {details.job?.result?.source_image_count && (
+                  <Card padding="md" className="bg-blue-50 border-blue-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Info className="w-5 h-5 text-blue-600" />
+                      <h4 className="font-semibold text-blue-900">Calidad del Cálculo</h4>
+                    </div>
+                    <div className="text-sm">
+                      <p className="text-blue-700 mb-2">
+                        <span className="font-semibold">Escenas utilizadas:</span>{' '}
+                        {details.job.result.source_image_count}
+                      </p>
+                      {details.job.result.is_composite && (
+                        <p className="text-blue-600 text-xs">
+                          ✓ Composición temporal (Cloud-Free Composite) - Eliminación automática de nubes mediante mediana
+                        </p>
+                      )}
+                      {details.job.result.source_image_count >= 3 && (
+                        <p className="text-green-600 text-xs mt-1">
+                          ✓ Alta fiabilidad - Múltiples pasadas de satélite
+                        </p>
+                      )}
+                    </div>
+                  </Card>
+                )}
+
                 {/* Scene Info */}
                 {details.scene_info && (
                   <Card padding="md">

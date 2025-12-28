@@ -47,6 +47,23 @@ export const VegetationLayerControl: React.FC<VegetationLayerControlProps> = ({
   const [legendDynamic, setLegendDynamic] = useState(false);
   const [selectedScene, setSelectedScene] = useState<VegetationScene | null>(null);
   const [rasterStats, setRasterStats] = useState<{ min?: number; max?: number } | null>(null);
+  const [cloudThreshold, setCloudThreshold] = useState<number>(20); // Default, will be loaded from config
+
+  // Load config to get cloud threshold
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const config = await api.getConfig();
+        if (config.cloud_coverage_threshold) {
+          setCloudThreshold(config.cloud_coverage_threshold);
+        }
+      } catch (err) {
+        console.error('Error loading config for cloud threshold:', err);
+        // Keep default 20%
+      }
+    };
+    loadConfig();
+  }, [api]);
 
   // Load scene details when date changes
   useEffect(() => {
@@ -186,7 +203,7 @@ export const VegetationLayerControl: React.FC<VegetationLayerControlProps> = ({
                   <span className="text-gray-600">Cobertura de nubes:</span>
                   <CloudCoverIndicator
                     cloudCoverage={selectedScene.cloud_coverage}
-                    threshold={20}
+                    threshold={cloudThreshold}
                     size="sm"
                     showWarning={true}
                   />

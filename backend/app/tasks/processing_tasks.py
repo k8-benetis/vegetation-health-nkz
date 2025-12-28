@@ -3,8 +3,8 @@ Celery tasks for processing vegetation indices.
 """
 
 import logging
-from typing import Dict, Any
-from datetime import datetime
+from typing import Dict, Any, List
+from datetime import datetime, date
 import uuid
 
 from app.celery_app import celery_app
@@ -21,20 +21,25 @@ def calculate_vegetation_index(
     self,
     job_id: str,
     tenant_id: str,
-    scene_id: str,
-    index_type: str,
-    formula: str = None
+    scene_id: str = None,
+    index_type: str = None,
+    formula: str = None,
+    start_date: str = None,
+    end_date: str = None
 ):
-    """Calculate vegetation index for a scene.
+    """Calculate vegetation index for a scene or temporal composite.
     
     Args:
         job_id: Job ID
         tenant_id: Tenant ID
-        scene_id: Scene ID
+        scene_id: Scene ID (for single scene mode)
         index_type: Type of index (NDVI, EVI, SAVI, GNDVI, NDRE, CUSTOM)
         formula: Custom formula (if index_type is CUSTOM)
+        start_date: Start date for temporal composite (ISO format)
+        end_date: End date for temporal composite (ISO format)
     """
     db = next(get_db_session())
+    job = None
     
     try:
         # Get job
@@ -43,77 +48,186 @@ def calculate_vegetation_index(
             logger.error(f"Job {job_id} not found")
             return
         
-        # Get scene
-        scene = db.query(VegetationScene).filter(VegetationScene.id == uuid.UUID(scene_id)).first()
-        if not scene:
-            logger.error(f"Scene {scene_id} not found")
-            job.mark_failed("Scene not found")
-            db.commit()
-            return
+        # Get parameters from job if not provided (backward compatibility)
+        if not index_type:
+            index_type = job.parameters.get('index_type')
+        if not formula:
+            formula = job.parameters.get('formula')
+        if not scene_id:
+            scene_id = job.parameters.get('scene_id')
+        if not start_date and job.start_date:
+            start_date = job.start_date.isoformat()
+        if not end_date and job.end_date:
+            end_date = job.end_date.isoformat()
+        
+        # Determine mode: single scene or temporal composite
+        is_temporal_composite = start_date and end_date
         
         # Update job status
         job.mark_started()
         job.celery_task_id = self.request.id
         db.commit()
         
-        # Update progress
-        self.update_state(state='PROGRESS', meta={'progress': 10, 'message': 'Loading bands'})
-        
-        # Generate bucket name automatically based on tenant_id (security: prevents bucket name conflicts)
+        # Get storage service
         bucket_name = generate_tenant_bucket_name(tenant_id)
-        
-        # Get storage service - use scene's storage_type if available, otherwise default to s3
         from app.models import VegetationConfig
         config = db.query(VegetationConfig).filter(
             VegetationConfig.tenant_id == tenant_id
         ).first()
         storage_type = config.storage_type if config else 's3'
-        
         storage = create_storage_service(
             storage_type=storage_type,
             default_bucket=bucket_name
         )
         
-        # Load band paths
-        band_paths = scene.bands or {}
+        source_image_count = 1
+        scenes_to_process: List[VegetationScene] = []
         
-        # Create processor
-        processor = VegetationIndexProcessor(band_paths)
-        
-        # Calculate index
-        self.update_state(state='PROGRESS', meta={'progress': 30, 'message': f'Calculating {index_type}'})
-        
-        if index_type == 'NDVI':
-            index_array = processor.calculate_ndvi()
-        elif index_type == 'EVI':
-            index_array = processor.calculate_evi()
-        elif index_type == 'SAVI':
-            index_array = processor.calculate_savi()
-        elif index_type == 'GNDVI':
-            index_array = processor.calculate_gndvi()
-        elif index_type == 'NDRE':
-            index_array = processor.calculate_ndre()
-        elif index_type == 'CUSTOM' and formula:
-            index_array = processor.calculate_custom_index(formula)
+        if is_temporal_composite:
+            # TEMPORAL COMPOSITE MODE
+            logger.info(f"Temporal composite mode: {start_date} to {end_date}")
+            self.update_state(state='PROGRESS', meta={'progress': 10, 'message': 'Finding scenes for composite'})
+            
+            # Parse dates
+            start = date.fromisoformat(start_date)
+            end = date.fromisoformat(end_date)
+            
+            # Find scenes in date range (limit to 10 for performance)
+            scenes_query = db.query(VegetationScene).filter(
+                VegetationScene.tenant_id == tenant_id,
+                VegetationScene.sensing_date >= start,
+                VegetationScene.sensing_date <= end
+            )
+            
+            if job.entity_id:
+                scenes_query = scenes_query.filter(VegetationScene.entity_id == job.entity_id)
+            
+            scenes_to_process = scenes_query.order_by(VegetationScene.sensing_date.desc()).limit(10).all()
+            
+            if not scenes_to_process:
+                raise ValueError(f"No scenes found in date range {start_date} to {end_date}")
+            
+            source_image_count = len(scenes_to_process)
+            logger.info(f"Found {source_image_count} scenes for temporal composite")
+            
+            if source_image_count > 10:
+                logger.warning(f"More than 10 scenes found, using first 10 for composite")
+                scenes_to_process = scenes_to_process[:10]
+                source_image_count = 10
+            
         else:
-            raise ValueError(f"Unsupported index type: {index_type}")
+            # SINGLE SCENE MODE
+            if not scene_id:
+                raise ValueError("scene_id is required for single scene mode")
+            
+            logger.info(f"Single scene mode: {scene_id}")
+            self.update_state(state='PROGRESS', meta={'progress': 10, 'message': 'Loading scene'})
+            
+            scene = db.query(VegetationScene).filter(
+                VegetationScene.id == uuid.UUID(scene_id),
+                VegetationScene.tenant_id == tenant_id
+            ).first()
+            
+            if not scene:
+                raise ValueError(f"Scene {scene_id} not found")
+            
+            scenes_to_process = [scene]
+        
+        # Calculate indices for all scenes
+        index_arrays: List[Any] = []
+        reference_meta = None
+        
+        for idx, scene in enumerate(scenes_to_process):
+            progress = 20 + (idx * 50 // len(scenes_to_process))
+            self.update_state(state='PROGRESS', meta={
+                'progress': progress,
+                'message': f'Processing scene {idx + 1}/{len(scenes_to_process)}'
+            })
+            
+            # Load band paths
+            band_paths = scene.bands or {}
+            if not band_paths:
+                logger.warning(f"Scene {scene.id} has no bands, skipping")
+                continue
+            
+            # Create processor for this scene
+            processor = VegetationIndexProcessor(band_paths)
+            
+            # Determine required bands based on index type
+            required_bands = {
+                'NDVI': ['B04', 'B08'],
+                'EVI': ['B02', 'B04', 'B08'],
+                'SAVI': ['B04', 'B08'],
+                'GNDVI': ['B03', 'B08'],
+                'NDRE': ['B8A', 'B08'],
+            }.get(index_type, ['B04', 'B08'])
+            
+            # Load bands
+            processor.load_bands(required_bands)
+            
+            # Store reference metadata from first scene
+            if reference_meta is None:
+                reference_meta = processor.band_meta
+            
+            # Calculate index
+            if index_type == 'NDVI':
+                index_array = processor.calculate_ndvi()
+            elif index_type == 'EVI':
+                index_array = processor.calculate_evi()
+            elif index_type == 'SAVI':
+                index_array = processor.calculate_savi()
+            elif index_type == 'GNDVI':
+                index_array = processor.calculate_gndvi()
+            elif index_type == 'NDRE':
+                index_array = processor.calculate_ndre()
+            elif index_type == 'CUSTOM' and formula:
+                index_array = processor.calculate_custom_index(formula)
+            else:
+                raise ValueError(f"Unsupported index type: {index_type}")
+            
+            index_arrays.append(index_array)
+        
+        if not index_arrays:
+            raise ValueError("No valid scenes processed")
+        
+        # Create composite if multiple scenes
+        self.update_state(state='PROGRESS', meta={'progress': 75, 'message': 'Creating composite'})
+        
+        if len(index_arrays) > 1:
+            # Temporal composite using median (cloud-free)
+            composite_array = VegetationIndexProcessor.create_temporal_composite(
+                index_arrays,
+                method='median'
+            )
+        else:
+            composite_array = index_arrays[0]
         
         # Calculate statistics
-        self.update_state(state='PROGRESS', meta={'progress': 60, 'message': 'Calculating statistics'})
-        statistics = processor.calculate_statistics(index_array)
+        self.update_state(state='PROGRESS', meta={'progress': 80, 'message': 'Calculating statistics'})
+        processor = VegetationIndexProcessor({})  # Dummy processor for statistics
+        processor.band_meta = reference_meta
+        statistics = processor.calculate_statistics(composite_array)
         
         # Save raster
-        self.update_state(state='PROGRESS', meta={'progress': 80, 'message': 'Saving results'})
-        output_path = f"{scene.storage_path}/indices/{index_type}.tif"
-        processor.save_index_raster(index_array, output_path)
+        self.update_state(state='PROGRESS', meta={'progress': 90, 'message': 'Saving results'})
         
-        # Upload to storage (use auto-generated bucket for security)
+        # Use first scene's storage path or create composite path
+        if is_temporal_composite:
+            output_path = f"composites/{job_id}/{index_type}.tif"
+        else:
+            output_path = f"{scenes_to_process[0].storage_path}/indices/{index_type}.tif"
+        
+        processor.save_index_raster(composite_array, output_path)
+        
+        # Upload to storage
         storage.upload_file(output_path, output_path, bucket_name)
         
-        # Create cache entry
+        # Create cache entry (use first scene's ID for reference, or create composite entry)
+        primary_scene_id = scenes_to_process[0].id
+        
         cache_entry = VegetationIndexCache(
             tenant_id=tenant_id,
-            scene_id=scene.id,
+            scene_id=primary_scene_id,  # Reference to first scene
             entity_id=job.entity_id,
             index_type=index_type,
             formula=formula,
@@ -124,24 +238,35 @@ def calculate_vegetation_index(
             pixel_count=statistics['pixel_count'],
             result_raster_path=output_path,
             calculated_at=datetime.utcnow().isoformat(),
-            calculation_time_ms=None  # TODO: Track calculation time
+            calculation_time_ms=None
         )
         
         db.add(cache_entry)
         
-        # Mark job as completed
-        job.mark_completed({
+        # Mark job as completed with metadata
+        job_result = {
             'index_type': index_type,
             'statistics': statistics,
-            'raster_path': output_path
-        })
+            'raster_path': output_path,
+            'source_image_count': source_image_count,
+            'is_composite': is_temporal_composite,
+        }
+        
+        if is_temporal_composite:
+            job_result['date_range'] = {
+                'start': start_date,
+                'end': end_date
+            }
+        
+        job.mark_completed(job_result)
         db.commit()
         
         # Update job status in usage stats
         from app.services.usage_tracker import UsageTracker
         UsageTracker.update_job_status(db, tenant_id, str(job.id), 'completed')
         
-        logger.info(f"Index {index_type} calculated successfully for scene {scene_id}")
+        mode_str = "temporal composite" if is_temporal_composite else "single scene"
+        logger.info(f"Index {index_type} calculated successfully ({mode_str}, {source_image_count} scenes)")
         
     except Exception as e:
         logger.error(f"Error calculating index: {str(e)}", exc_info=True)
@@ -171,9 +296,10 @@ def process_index_job(self, job_id: str):
             job.tenant_id,
             job.parameters.get('scene_id'),
             job.parameters.get('index_type'),
-            job.parameters.get('formula')
+            job.parameters.get('formula'),
+            job.start_date.isoformat() if job.start_date else None,
+            job.end_date.isoformat() if job.end_date else None
         )
         
     finally:
         db.close()
-

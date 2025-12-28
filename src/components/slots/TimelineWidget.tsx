@@ -31,9 +31,25 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filterClouds, setFilterClouds] = useState(true);
-  const [cloudThreshold] = useState(20);
+  const [cloudThreshold, setCloudThreshold] = useState(20); // Default, will be loaded from config
 
   const effectiveEntityId = entityId || selectedEntityId;
+
+  // Load config to get cloud threshold
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const config = await api.getConfig();
+        if (config.cloud_coverage_threshold) {
+          setCloudThreshold(config.cloud_coverage_threshold);
+        }
+      } catch (err) {
+        console.error('Error loading config for cloud threshold:', err);
+        // Keep default 20%
+      }
+    };
+    loadConfig();
+  }, [api]);
 
   // Filter scenes by cloud coverage
   const filteredScenes = filterClouds

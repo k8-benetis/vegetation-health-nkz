@@ -9,10 +9,12 @@ import { useVegetationContext } from '../services/vegetationContext';
 import type { VegetationIndexType } from '../types';
 
 interface CalculationOptions {
-  sceneId: string;
+  sceneId?: string;
   indexType: VegetationIndexType;
   entityId?: string;
   formula?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 interface CalculationState {
@@ -35,18 +37,20 @@ export function useIndexCalculation() {
   const calculateIndex = useCallback(
     async (options?: Partial<CalculationOptions>) => {
       const calculationOptions: CalculationOptions = {
-        sceneId: options?.sceneId || selectedSceneId || '',
+        sceneId: options?.sceneId || selectedSceneId || undefined,
         indexType: options?.indexType || 'NDVI',
         entityId: options?.entityId || selectedEntityId || undefined,
         formula: options?.formula,
+        startDate: options?.startDate,
+        endDate: options?.endDate,
       };
 
-      // Validate required fields
-      if (!calculationOptions.sceneId) {
+      // Validate required fields: must have either sceneId OR (startDate AND endDate)
+      if (!calculationOptions.sceneId && (!calculationOptions.startDate || !calculationOptions.endDate)) {
         setState({
           isCalculating: false,
           jobId: null,
-          error: 'No scene selected. Please select a scene from the timeline.',
+          error: 'Please select a scene OR provide a date range for composite calculation.',
           success: false,
         });
         return null;
@@ -65,6 +69,8 @@ export function useIndexCalculation() {
           index_type: calculationOptions.indexType,
           entity_id: calculationOptions.entityId,
           formula: calculationOptions.formula,
+          start_date: calculationOptions.startDate,
+          end_date: calculationOptions.endDate,
         });
 
         setState({

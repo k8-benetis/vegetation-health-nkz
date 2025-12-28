@@ -84,10 +84,13 @@ export interface JobCreateParams {
 }
 
 export interface IndexCalculationParams {
-  scene_id: string;
+  scene_id?: string;
   index_type: VegetationIndexType;
   formula?: string;
   entity_id?: string;
+  // Temporal composite options
+  start_date?: string;
+  end_date?: string;
 }
 
 // Slot component props

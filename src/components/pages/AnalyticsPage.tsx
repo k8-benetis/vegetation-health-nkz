@@ -30,7 +30,7 @@ export const AnalyticsPage: React.FC = () => {
   // Get UI components safely from Host
   const { Card } = useUIKit();
   const api = useVegetationApi();
-  const { selectedIndex, selectedEntityId, selectedDate, setSelectedIndex } = useVegetationContext();
+  const { selectedIndex, selectedEntityId, selectedDate, selectedSceneId, setSelectedIndex } = useVegetationContext();
   
   // State
   const [activeTab, setActiveTab] = useState<TabType>('calculations');
@@ -49,6 +49,11 @@ export const AnalyticsPage: React.FC = () => {
   const [histogramData, setHistogramData] = useState<number[]>([]);
   const [histogramLoading, setHistogramLoading] = useState(false);
   const [selectedJobForHistogram, setSelectedJobForHistogram] = useState<string | null>(null);
+  
+  // Calculation mode: 'single' or 'composite'
+  const [calculationMode, setCalculationMode] = useState<'single' | 'composite'>('composite');
+  const [compositeStartDate, setCompositeStartDate] = useState<string>('');
+  const [compositeEndDate, setCompositeEndDate] = useState<string>('');
   
   // Timeseries state
   const timeseries = useTimeseries({
@@ -245,6 +250,48 @@ export const AnalyticsPage: React.FC = () => {
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Nuevo Cálculo</h2>
                 
                 <div className="space-y-4">
+                  {/* Calculation Mode Toggle */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Modo de Cálculo
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setCalculationMode('composite')}
+                        className={`
+                          flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all
+                          ${calculationMode === 'composite'
+                            ? 'bg-green-600 text-white shadow-md'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center justify-center gap-2">
+                          <Layers className="w-4 h-4" />
+                          <span>Cloud-Free Composite</span>
+                          <span className="text-xs bg-green-700 px-1.5 py-0.5 rounded">Recomendado</span>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => setCalculationMode('single')}
+                        className={`
+                          flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all
+                          ${calculationMode === 'single'
+                            ? 'bg-green-600 text-white shadow-md'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }
+                        `}
+                      >
+                        Escena Individual
+                      </button>
+                    </div>
+                    {calculationMode === 'composite' && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Agrupa múltiples escenas (10 días) usando mediana para eliminar nubes automáticamente
+                      </p>
+                    )}
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-3">
                       Tipo de Índice
@@ -256,29 +303,79 @@ export const AnalyticsPage: React.FC = () => {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Escena
-                    </label>
-                    <Select
-                      value={selectedDate || ''}
-                      onChange={(e) => {
-                        const scene = scenes.find(s => s.sensing_date === e.target.value);
-                        if (scene) {
-                          // Update context with scene
-                        }
-                      }}
-                      options={scenes.map(s => ({
-                        value: s.sensing_date,
-                        label: `${s.sensing_date} (${s.cloud_coverage?.toFixed(1) || 'N/A'}% nubes)`,
-                      }))}
-                      className="w-full"
-                    />
-                  </div>
+                  {calculationMode === 'single' ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Escena
+                      </label>
+                      <Select
+                        value={selectedDate || ''}
+                        onChange={(e) => {
+                          const scene = scenes.find(s => s.sensing_date === e.target.value);
+                          if (scene) {
+                            // Scene selection handled by context
+                          }
+                        }}
+                        options={scenes.map(s => ({
+                          value: s.sensing_date,
+                          label: `${s.sensing_date} (${s.cloud_coverage?.toFixed(1) || 'N/A'}% nubes)`,
+                        }))}
+                        className="w-full"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Rango de Fechas (máx. 90 días)
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <input
+                              type="date"
+                              value={compositeStartDate}
+                              onChange={(e) => setCompositeStartDate(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                              placeholder="Fecha inicio"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Desde</p>
+                          </div>
+                          <div>
+                            <input
+                              type="date"
+                              value={compositeEndDate}
+                              onChange={(e) => setCompositeEndDate(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                              placeholder="Fecha fin"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Hasta</p>
+                          </div>
+                        </div>
+                        {!compositeStartDate || !compositeEndDate ? (
+                          <button
+                            onClick={() => {
+                              // Set default to last 10 days
+                              const end = new Date();
+                              const start = new Date();
+                              start.setDate(start.getDate() - 10);
+                              setCompositeEndDate(end.toISOString().split('T')[0]);
+                              setCompositeStartDate(start.toISOString().split('T')[0]);
+                            }}
+                            className="text-xs text-green-600 hover:text-green-700 mt-1"
+                          >
+                            Usar últimos 10 días (recomendado)
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  )}
 
                   <CalculationButton
                     variant="primary"
                     size="lg"
+                    sceneId={calculationMode === 'single' ? selectedSceneId || undefined : undefined}
+                    startDate={calculationMode === 'composite' ? compositeStartDate : undefined}
+                    endDate={calculationMode === 'composite' ? compositeEndDate : undefined}
                   />
                 </div>
               </Card>
@@ -323,7 +420,6 @@ export const AnalyticsPage: React.FC = () => {
                 <DistributionHistogram
                   values={histogramData}
                   indexType={selectedIndex}
-                  bins={6}
                   height={250}
                 />
               ) : (

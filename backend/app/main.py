@@ -124,11 +124,19 @@ class ConfigUpdateRequest(BaseModel):
 
 
 class IndexCalculationRequest(BaseModel):
-    """Request model for calculating index."""
-    scene_id: str
+    """Request model for calculating index.
+    
+    Supports two modes:
+    1. Single scene: Provide scene_id
+    2. Temporal composite: Provide start_date and end_date (cloud-free composite)
+    """
+    scene_id: Optional[str] = Field(None, description="Scene ID for single scene calculation")
     index_type: str = Field(..., description="NDVI, EVI, SAVI, GNDVI, NDRE, CUSTOM")
     formula: Optional[str] = Field(None, description="Custom formula if index_type is CUSTOM")
     entity_id: Optional[str] = None
+    # Temporal composite options
+    start_date: Optional[date] = Field(None, description="Start date for temporal composite (cloud-free)")
+    end_date: Optional[date] = Field(None, description="End date for temporal composite (cloud-free)")
 
 
 class TimeseriesRequest(BaseModel):
@@ -980,11 +988,42 @@ async def calculate_index(
     current_user: dict = Depends(require_auth),
     db: Session = Depends(get_db_for_tenant)
 ):
-    """Calculate vegetation index for a scene.
+    """Calculate vegetation index for a scene or temporal composite.
+    
+    Two modes:
+    1. Single scene: Provide scene_id
+    2. Temporal composite (cloud-free): Provide start_date and end_date
     
     Validates limits before creating the job.
     """
     try:
+        # Validate request: must have either scene_id OR (start_date AND end_date)
+        if not request.scene_id and not (request.start_date and request.end_date):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Either scene_id or both start_date and end_date must be provided"
+            )
+        
+        if request.scene_id and (request.start_date or request.end_date):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot provide both scene_id and date range. Use either single scene or temporal composite."
+            )
+        
+        # Hard limits for temporal composite
+        if request.start_date and request.end_date:
+            date_range_days = (request.end_date - request.start_date).days
+            if date_range_days > 90:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Date range cannot exceed 90 days. Provided: {date_range_days} days"
+                )
+            if date_range_days < 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="end_date must be after start_date"
+                )
+        
         # Validate limits (calculate_index jobs have minimal area, but check frequency)
         validator = LimitsValidator(db, current_user['tenant_id'])
         
@@ -1008,9 +1047,13 @@ async def calculate_index(
             parameters={
                 'scene_id': request.scene_id,
                 'index_type': request.index_type,
-                'formula': request.formula
+                'formula': request.formula,
+                'start_date': request.start_date.isoformat() if request.start_date else None,
+                'end_date': request.end_date.isoformat() if request.end_date else None,
             },
             entity_id=request.entity_id,
+            start_date=request.start_date,
+            end_date=request.end_date,
             created_by=current_user.get('user_id')
         )
         
@@ -1034,7 +1077,9 @@ async def calculate_index(
             current_user['tenant_id'],
             request.scene_id,
             request.index_type,
-            request.formula
+            request.formula,
+            request.start_date.isoformat() if request.start_date else None,
+            request.end_date.isoformat() if request.end_date else None
         )
         
         return {

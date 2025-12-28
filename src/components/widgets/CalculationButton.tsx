@@ -15,6 +15,8 @@ interface CalculationButtonProps {
   variant?: 'primary' | 'secondary';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 export const CalculationButton: React.FC<CalculationButtonProps> = ({
@@ -24,6 +26,8 @@ export const CalculationButton: React.FC<CalculationButtonProps> = ({
   variant = 'primary',
   size = 'md',
   className = '',
+  startDate,
+  endDate,
 }) => {
   // Button component not needed - using native button
   const { selectedIndex, selectedSceneId, selectedEntityId } = useVegetationContext();
@@ -39,6 +43,8 @@ export const CalculationButton: React.FC<CalculationButtonProps> = ({
       sceneId: effectiveSceneId || undefined,
       entityId: effectiveEntityId || undefined,
       indexType: effectiveIndexType,
+      startDate: startDate,
+      endDate: endDate,
     });
   };
 
@@ -53,7 +59,8 @@ export const CalculationButton: React.FC<CalculationButtonProps> = ({
     secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300',
   };
 
-  const isDisabled = !effectiveSceneId || isCalculating;
+  // Disable if: (no scene AND no date range) OR calculating
+  const isDisabled = (!effectiveSceneId && (!startDate || !endDate)) || isCalculating;
 
   return (
     <div className="space-y-2">
