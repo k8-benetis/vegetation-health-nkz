@@ -28,11 +28,9 @@ spec:
         component: worker
         module: vegetation-prime
     spec:
-      imagePullSecrets:
-      - name: ghcr-secret
       containers:
       - name: worker
-        image: ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-backend:latest
+        image: ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-backend:v1.11.0
         imagePullPolicy: Always
         command: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=4"]
         env:
@@ -41,7 +39,7 @@ spec:
           valueFrom:
             secretKeyRef:
               name: postgresql-secret
-              key: connection-string
+              key: postgres-url
         # Redis Configuration
         - name: CELERY_BROKER_URL
           value: "redis://redis-service:6379/0"
