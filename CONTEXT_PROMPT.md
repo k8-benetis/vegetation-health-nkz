@@ -290,3 +290,4 @@ const parcelId = selectedEntityType === 'AgriParcel' ? selectedEntityId : null;
 - **Estilos consistentes**: Seguir `CoreContextPanel.tsx` como referencia
 - **Sin deuda técnica**: Componentes deben ser mantenibles y reutilizables
 
+

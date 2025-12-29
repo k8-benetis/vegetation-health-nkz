@@ -5,6 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Calendar, Loader2, Filter } from 'lucide-react';
+import { useViewer } from '@nekazari/sdk';
 import { useUIKit } from '../../hooks/useUIKit';
 import { useVegetationContext } from '../../services/vegetationContext';
 import { useVegetationApi } from '../../services/api';
@@ -18,6 +19,7 @@ interface TimelineWidgetProps {
 export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
   // Get UI components safely from Host
   const { Card } = useUIKit();
+  const { currentDate, setCurrentDate } = useViewer();
   const {
     selectedIndex,
     selectedDate,
@@ -82,9 +84,32 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
     fetchScenes();
   }, [effectiveEntityId, api]);
 
+  // Sync with viewer's currentDate
+  useEffect(() => {
+    if (currentDate && currentDate !== selectedDate) {
+      // If viewer has a different date, try to find matching scene
+      const matchingScene = scenes.find(s => s.sensing_date === currentDate);
+      if (matchingScene) {
+        setSelectedDate(currentDate);
+        setSelectedSceneId(matchingScene.id);
+      }
+    }
+  }, [currentDate, scenes]);
+
+  // Sync viewer's currentDate when selectedDate changes
+  useEffect(() => {
+    if (selectedDate && setCurrentDate && selectedDate !== currentDate) {
+      setCurrentDate(selectedDate);
+    }
+  }, [selectedDate, currentDate, setCurrentDate]);
+
   const handleSceneClick = (scene: VegetationScene) => {
     setSelectedDate(scene.sensing_date);
     setSelectedSceneId(scene.id);
+    // Update viewer's currentDate
+    if (setCurrentDate) {
+      setCurrentDate(scene.sensing_date);
+    }
   };
 
   if (loading) {
@@ -119,14 +144,14 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
   }
 
   return (
-    <Card padding="md">
+    <Card padding="md" className="bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-xl">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-green-600" />
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h3 className="text-lg font-semibold text-slate-800">
             Escenas Disponibles
           </h3>
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-slate-500">
             ({filteredScenes.length} de {scenes.length} escenas)
           </span>
         </div>
@@ -202,12 +227,12 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
 
       {/* Selected Scene Info */}
       {selectedDate && (
-        <div className="mt-4 pt-4 border-t border-gray-200">
+        <div className="mt-4 pt-4 border-t border-slate-200">
           <div className="flex items-center justify-between text-sm">
             <div>
-              <span className="text-gray-500">Selected: </span>
-              <span className="font-semibold text-gray-900">
-                {new Date(selectedDate).toLocaleDateString('en-US', {
+              <span className="text-slate-500">Seleccionada: </span>
+              <span className="font-semibold text-slate-800">
+                {new Date(selectedDate).toLocaleDateString('es-ES', {
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric',
@@ -215,7 +240,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-gray-500">Index:</span>
+              <span className="text-slate-500">Índice:</span>
               <span className="font-semibold text-green-600">{selectedIndex}</span>
             </div>
           </div>

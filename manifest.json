@@ -58,11 +58,29 @@
       "assets/screenshot1.png"
     ],
     "slots": {
-      "layer-controls": [
+      "layer-toggle": [
         {
           "id": "vegetation-layer-control",
           "component": "VegetationLayerControl",
           "priority": 10
+        }
+      ],
+      "context-panel": [
+        {
+          "id": "vegetation-config",
+          "component": "VegetationConfig",
+          "priority": 20,
+          "showWhen": {
+            "entityType": ["AgriParcel"]
+          }
+        },
+        {
+          "id": "vegetation-analytics",
+          "component": "VegetationAnalytics",
+          "priority": 30,
+          "showWhen": {
+            "entityType": ["AgriParcel"]
+          }
         }
       ],
       "bottom-panel": [

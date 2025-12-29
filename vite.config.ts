@@ -67,6 +67,7 @@ export default defineConfig({
       filename: 'remoteEntry.js',
       exposes: {
         './App': './src/App.tsx',
+        './viewerSlots': './src/slots/index.ts',
         './VegetationLayer': './src/components/slots/VegetationLayer.tsx',
         './TimelineWidget': './src/components/slots/TimelineWidget.tsx',
         './VegetationLayerControl': './src/components/slots/VegetationLayerControl.tsx',

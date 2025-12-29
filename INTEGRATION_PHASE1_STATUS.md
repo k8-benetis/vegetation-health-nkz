@@ -156,3 +156,4 @@ Usar las mismas clases que `CoreContextPanel.tsx`:
 - Componente original: `src/components/pages/AnalyticsPage.tsx`
 - Referencia de estilo: `/home/g/Documents/nekazari-public/apps/host/src/components/viewer/CoreContextPanel.tsx`
 
+

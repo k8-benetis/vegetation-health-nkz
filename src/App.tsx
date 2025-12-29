@@ -2,22 +2,25 @@
  * Vegetation Prime - Main App Component
  * High-performance vegetation intelligence suite for Nekazari Platform
  * 
- * IMPORTANT: This module uses internal tabs instead of React Router routes
- * to avoid conflicts with the host's router. The host already provides
- * the BrowserRouter context, so we use state-based navigation.
+ * NOTE: This module is primarily designed to be used within the Unified Viewer.
+ * This standalone app is provided as a fallback for development/testing purposes.
+ * In production, the module integrates seamlessly into the viewer via slots.
  */
 
 import React, { useState } from 'react';
-import { Settings, BarChart3 } from 'lucide-react';
+import { Settings, BarChart3, Info } from 'lucide-react';
 import { VegetationProvider } from './services/vegetationContext';
-import ConfigPage from './components/pages/ConfigPage';
-import AnalyticsPage from './components/pages/AnalyticsPage';
+import { VegetationConfig } from './components/VegetationConfig';
+import { VegetationAnalytics } from './components/VegetationAnalytics';
 import './index.css';
 
 // Slot components (exported for host integration)
 export { VegetationLayerControl } from './components/slots/VegetationLayerControl';
 export { TimelineWidget } from './components/slots/TimelineWidget';
 export { VegetationLayer, useVegetationLayer, createVegetationLayer } from './components/slots/VegetationLayer';
+
+// Export viewerSlots for host integration
+export { viewerSlots } from './slots/index';
 
 type TabType = 'config' | 'analytics';
 
@@ -26,13 +29,17 @@ const VegetationPrimeApp: React.FC = () => {
 
   return (
     <VegetationProvider>
-      <div className="w-full bg-gray-50">
+      <div className="w-full bg-gray-50 min-h-screen">
         {/* Header with Tabs */}
         <div className="bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
-              <div className="flex items-center">
+              <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold text-gray-900">Vegetation Prime</h1>
+                <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded-full">
+                  <Info className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs text-blue-700">Modo Standalone (Fallback)</span>
+                </div>
               </div>
             </div>
             
@@ -68,10 +75,20 @@ const VegetationPrimeApp: React.FC = () => {
           </div>
         </div>
 
-        {/* Tab Content */}
+        {/* Tab Content - Using refactored components */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {activeTab === 'config' && <ConfigPage />}
-          {activeTab === 'analytics' && <AnalyticsPage />}
+          {activeTab === 'config' && (
+            <VegetationConfig 
+              parcelId={null} 
+              mode="full-page" 
+            />
+          )}
+          {activeTab === 'analytics' && (
+            <VegetationAnalytics 
+              parcelId={null} 
+              mode="full-page" 
+            />
+          )}
         </div>
       </div>
     </VegetationProvider>
