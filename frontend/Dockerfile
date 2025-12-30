@@ -7,10 +7,9 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Copy SDK from parent repo to use latest version
+# Copy SDK from local directory (must be copied to build context before docker build)
 # This allows using the SDK with latest fixes without publishing to npm
-# Note: Build context must include the SDK directory
-COPY ../nekazari-public/packages/sdk ./local-sdk
+COPY local-sdk ./local-sdk
 
 # Install dependencies
 # Install local SDK first, then install other dependencies
