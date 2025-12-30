@@ -7,14 +7,15 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json* ./
 
+# Install dependencies from npm first
+RUN npm ci
+
 # Copy SDK from local directory (must be copied to build context before docker build)
 # This allows using the SDK with latest fixes without publishing to npm
 COPY local-sdk ./local-sdk
 
-# Install dependencies
-# Install local SDK first, then install other dependencies
+# Install local SDK to override npm version
 RUN npm install ./local-sdk && \
-    npm ci && \
     rm -rf ./local-sdk
 
 # Copy all necessary files for build
