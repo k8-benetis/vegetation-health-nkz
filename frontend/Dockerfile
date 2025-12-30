@@ -11,6 +11,9 @@ COPY package.json package-lock.json* ./
 # This allows using the SDK with latest fixes without publishing to npm
 COPY local-sdk ./local-sdk
 
+# Temporarily update package.json to use local SDK path
+RUN sed -i 's|"file:../nekazari-public/packages/sdk"|"file:./local-sdk"|' package.json
+
 # Install dependencies (including local SDK)
 RUN npm install && \
     rm -rf ./local-sdk
