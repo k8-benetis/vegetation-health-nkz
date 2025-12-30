@@ -7,8 +7,16 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json* ./
 
+# Copy SDK from parent repo to use latest version
+# This allows using the SDK with latest fixes without publishing to npm
+# Note: Build context must include the SDK directory
+COPY ../nekazari-public/packages/sdk ./local-sdk
+
 # Install dependencies
-RUN npm ci
+# Install local SDK first, then install other dependencies
+RUN npm install ./local-sdk && \
+    npm ci && \
+    rm -rf ./local-sdk
 
 # Copy all necessary files for build
 COPY src/ ./src/
