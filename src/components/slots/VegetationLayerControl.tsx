@@ -51,8 +51,8 @@ export const VegetationLayerControl: React.FC<VegetationLayerControlProps> = ({
   const [rasterStats, setRasterStats] = useState<{ min?: number; max?: number } | null>(null);
   const [cloudThreshold, setCloudThreshold] = useState<number>(20); // Default, will be loaded from config
   const [opacity, setOpacity] = useState<number>(100); // Opacity in percentage (0-100)
-  const [layerLoading, setLayerLoading] = useState(false);
-  const [layerError, setLayerError] = useState<string | null>(null);
+  const [layerLoading] = useState(false); // Reserved for future use
+  const [layerError] = useState<string | null>(null); // Reserved for future use
 
   // Check if vegetation layer is active
   const isActive = isLayerActive?.('vegetation') ?? false;

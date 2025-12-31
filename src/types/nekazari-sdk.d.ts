@@ -34,6 +34,24 @@ declare module '@nekazari/sdk' {
   export function useViewer(): ViewerContextValue;
   export function useViewerOptional(): ViewerContextValue | null;
 
+  // API Client
+  export interface NKZClientOptions {
+    baseUrl: string;
+    getToken?: () => string | undefined;
+    getTenantId?: () => string | undefined;
+    defaultHeaders?: Record<string, string>;
+  }
+
+  export class NKZClient {
+    constructor(options: NKZClientOptions);
+    request<T = unknown>(path: string, init?: RequestInit): Promise<T>;
+    get<T = unknown>(path: string, init?: RequestInit): Promise<T>;
+    post<T = unknown, B = unknown>(path: string, body?: B, init?: RequestInit): Promise<T>;
+    put<T = unknown, B = unknown>(path: string, body?: B, init?: RequestInit): Promise<T>;
+    patch<T = unknown, B = unknown>(path: string, body?: B, init?: RequestInit): Promise<T>;
+    delete<T = unknown>(path: string, init?: RequestInit): Promise<T>;
+  }
+
   // Re-export other SDK exports
   export * from '@nekazari/sdk/dist/index';
 }
