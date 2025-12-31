@@ -30,7 +30,7 @@ ENV C_INCLUDE_PATH=/usr/include/gdal
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Copy only requirements first (for better layer caching)
-COPY requirements.txt .
+COPY backend/requirements.txt ./requirements.txt
 
 # Install Python dependencies in stages for better caching
 # Stage 1: Base dependencies (change less frequently)
@@ -77,17 +77,18 @@ RUN pip install --no-cache-dir \
     pytest-cov==4.1.0
 
 # Copy application code (this invalidates cache most often)
-COPY . .
+COPY backend/app ./app
+COPY backend/migrations ./migrations
 
 # Create scripts directory if it doesn't exist
 RUN mkdir -p /app/scripts
 
 # Copy migration script
-COPY scripts/run_migrations.py /app/scripts/run_migrations.py
+COPY backend/scripts/run_migrations.py /app/scripts/run_migrations.py
 RUN chmod +x /app/scripts/run_migrations.py
 
 # Copy entrypoint script
-COPY entrypoint.sh /app/entrypoint.sh
+COPY backend/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
 # Set Python path

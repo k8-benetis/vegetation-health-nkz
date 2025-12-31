@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
       - name: worker
-        image: ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-backend:v1.11.0
+        image: ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-backend:v1.12.0
         imagePullPolicy: Always
         command: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=4"]
         env:
