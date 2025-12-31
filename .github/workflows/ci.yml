@@ -132,6 +132,11 @@ jobs:
         # Remove package-lock.json to force regeneration with npm SDK
         rm -f package-lock.json
         npm install
+        # Verify SDK installation
+        echo "=== Verifying SDK installation ==="
+        npm list @nekazari/sdk || echo "WARNING: SDK not found in npm list"
+        ls -la node_modules/@nekazari/sdk/ || echo "WARNING: SDK directory not found"
+        test -f node_modules/@nekazari/sdk/dist/index.js && echo "✓ SDK dist/index.js exists" || echo "ERROR: SDK dist/index.js not found"
     
     - name: Type check
       run: npm run typecheck
