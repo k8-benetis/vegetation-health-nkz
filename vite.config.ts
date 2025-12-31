@@ -24,8 +24,13 @@ function replaceJsxRuntime() {
         // Return the alias path - Vite will resolve it to the physical file
         return path.resolve(__dirname, 'node_modules/react/jsx-runtime.js');
       }
-      // Don't intercept @nekazari/sdk - let Vite resolve it normally from node_modules
-      // The SDK is installed from npm and should resolve via package.json exports
+      // Force @nekazari/sdk to resolve via node_modules before Module Federation processes it
+      // This prevents Module Federation from trying to load it as a shared module
+      if (source === '@nekazari/sdk') {
+        // Return null to let Vite's normal resolution handle it
+        // This ensures it gets bundled directly instead of being processed by Module Federation
+        return null;
+      }
       return null;
     },
     // After build, find the actual bundled jsx-runtime file
@@ -104,15 +109,10 @@ export default defineConfig({
           import: false,  // Use shared from host (globalThis.__federation_shared__)
           shareScope: 'default',
         },
-        // @nekazari/sdk is bundled directly (not shared) but we need to tell
-        // Module Federation to not externalize it, so it gets bundled
-        '@nekazari/sdk': {
-          singleton: false,
-          requiredVersion: '^1.0.0',
-          import: true,  // Bundle SDK instead of sharing (it's small and module-specific)
-          // Note: SDK automatically obtains auth context from host via React Context
-          // The host's AuthProvider wraps all modules, so useAuth() works correctly
-        },
+        // @nekazari/sdk is NOT in shared - it's bundled directly by Vite
+        // Module Federation should not try to load it as a shared module
+        // SDK automatically obtains auth context from host via React Context
+        // The host's AuthProvider wraps all modules, so useAuth() works correctly
       },
     }),
   ],
