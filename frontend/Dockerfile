@@ -8,10 +8,14 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # Temporarily update package.json to use npm SDK instead of local path
-RUN sed -i 's|"file:../nekazari-public/packages/sdk"|"@nekazari/sdk@^1.0.3"|' package.json || true
-
-# Install dependencies (using npm install since we modified package.json)
-RUN npm install
+RUN sed -i 's|"file:../nekazari-public/packages/sdk"|"^1.0.3"|' package.json && \
+    echo "=== Updated package.json ===" && \
+    grep "@nekazari/sdk" package.json && \
+    echo "=== Installing dependencies ===" && \
+    npm install && \
+    echo "=== Verifying SDK installation ===" && \
+    npm list @nekazari/sdk && \
+    test -d node_modules/@nekazari/sdk && echo "SDK directory exists" || echo "ERROR: SDK directory not found"
 
 # Copy all necessary files for build
 COPY src/ ./src/

@@ -102,13 +102,9 @@ export default defineConfig({
           import: false,  // Use shared from host (globalThis.__federation_shared__)
           shareScope: 'default',
         },
-        '@nekazari/sdk': {
-          singleton: false,
-          requiredVersion: '^1.0.0',
-          import: true,  // Bundle SDK instead of sharing (it's small and module-specific)
-          // Note: SDK automatically obtains auth context from host via React Context
-          // The host's AuthProvider wraps all modules, so useAuth() works correctly
-        },
+        // Note: @nekazari/sdk is NOT in shared - it's bundled directly
+        // SDK automatically obtains auth context from host via React Context
+        // The host's AuthProvider wraps all modules, so useAuth() works correctly
       },
     }),
   ],
