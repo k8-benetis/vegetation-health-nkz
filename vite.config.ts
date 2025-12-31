@@ -116,7 +116,11 @@ export default defineConfig({
       // When Vite sees a file path, it bundles it instead of externalizing
       'react/jsx-runtime': path.resolve(__dirname, 'node_modules/react/jsx-runtime.js'),
       'react/jsx-dev-runtime': path.resolve(__dirname, 'node_modules/react/jsx-dev-runtime.js'),
+      // Ensure @nekazari/sdk resolves correctly by pointing to the dist file
+      '@nekazari/sdk': path.resolve(__dirname, 'node_modules/@nekazari/sdk/dist/index.js'),
     },
+    // Ensure proper resolution of node_modules
+    dedupe: ['@nekazari/sdk'],
   },
   server: {
     host: '0.0.0.0',
