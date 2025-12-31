@@ -31,14 +31,14 @@ export interface VegetationConfigProps {
 }
 
 export const VegetationConfig: React.FC<VegetationConfigProps> = ({
-  parcelId: propParcelId,
+  parcelId: _propParcelId,
   mode = 'panel',
-  onJobCreated,
+  onJobCreated: _onJobCreated,
   className
 }) => {
   // Get parcelId from useViewer if not provided as prop
-  const { selectedEntityId, selectedEntityType } = useViewer();
-  const parcelId = propParcelId ?? (selectedEntityType === 'AgriParcel' ? selectedEntityId : null);
+  // Note: hooks use selectedEntityId directly from useViewer, so we don't need to store parcelId
+  useViewer(); // Ensure we're within ViewerProvider context
   const { Card, Button } = useUIKit();
   const {
     config,
@@ -53,7 +53,7 @@ export const VegetationConfig: React.FC<VegetationConfigProps> = ({
     jobsLoading,
     saveConfig,
     refreshCredentials,
-    refreshUsage,
+    refreshUsage: _refreshUsage,
     refreshJobs,
   } = useVegetationConfig();
 

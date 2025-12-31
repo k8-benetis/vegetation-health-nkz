@@ -86,20 +86,28 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
 
   // Sync with viewer's currentDate
   useEffect(() => {
-    if (currentDate && currentDate !== selectedDate) {
-      // If viewer has a different date, try to find matching scene
-      const matchingScene = scenes.find(s => s.sensing_date === currentDate);
-      if (matchingScene) {
-        setSelectedDate(currentDate);
-        setSelectedSceneId(matchingScene.id);
+    if (currentDate && selectedDate) {
+      // Convert currentDate to string for comparison
+      const currentDateStr = currentDate.toISOString().split('T')[0];
+      if (currentDateStr !== selectedDate) {
+        // If viewer has a different date, try to find matching scene
+        const matchingScene = scenes.find(s => s.sensing_date === currentDateStr);
+        if (matchingScene) {
+          setSelectedDate(currentDateStr);
+          setSelectedSceneId(matchingScene.id);
+        }
       }
     }
-  }, [currentDate, scenes]);
+  }, [currentDate, selectedDate, scenes, setSelectedDate, setSelectedSceneId]);
 
   // Sync viewer's currentDate when selectedDate changes
   useEffect(() => {
-    if (selectedDate && setCurrentDate && selectedDate !== currentDate) {
-      setCurrentDate(selectedDate);
+    if (selectedDate && setCurrentDate) {
+      // Convert selectedDate string to Date for comparison
+      const selectedDateObj = new Date(selectedDate);
+      if (selectedDateObj.getTime() !== currentDate.getTime()) {
+        setCurrentDate(selectedDateObj);
+      }
     }
   }, [selectedDate, currentDate, setCurrentDate]);
 
@@ -108,7 +116,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
     setSelectedSceneId(scene.id);
     // Update viewer's currentDate
     if (setCurrentDate) {
-      setCurrentDate(scene.sensing_date);
+      setCurrentDate(new Date(scene.sensing_date));
     }
   };
 

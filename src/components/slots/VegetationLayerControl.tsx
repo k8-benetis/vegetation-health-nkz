@@ -247,7 +247,12 @@ export const VegetationLayerControl: React.FC<VegetationLayerControlProps> = ({
                 <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
               )}
               {layerError && (
-                <AlertCircle className="w-4 h-4 text-red-500" title={layerError} />
+                <div className="relative group">
+                  <AlertCircle className="w-4 h-4 text-red-500" aria-label={layerError} />
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs bg-slate-900 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                    {layerError}
+                  </div>
+                </div>
               )}
             </div>
             <Button

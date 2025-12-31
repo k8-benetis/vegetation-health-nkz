@@ -30,7 +30,6 @@ import { TimeseriesChart } from './analytics/TimeseriesChart';
 import { DistributionHistogram } from './analytics/DistributionHistogram';
 import { IndexPillSelector } from './widgets/IndexPillSelector';
 import { CalculationButton } from './widgets/CalculationButton';
-import type { VegetationJob } from '../types';
 
 export interface VegetationAnalyticsProps {
   parcelId?: string | null; // Parcela seleccionada (opcional, se obtiene de useViewer si no se proporciona)
@@ -79,7 +78,7 @@ export const VegetationAnalytics: React.FC<VegetationAnalyticsProps> = ({
     limit: mode === 'panel' ? 10 : 50,
   });
   
-  const { scenes, loading: scenesLoading } = useVegetationScenes({
+  const { scenes } = useVegetationScenes({
     entityId: effectiveEntityId,
     autoRefresh: false,
   });
@@ -299,7 +298,7 @@ export const VegetationAnalytics: React.FC<VegetationAnalyticsProps> = ({
                   </label>
                   <Select
                     value={selectedDate || ''}
-                    onChange={(e) => {
+                    onChange={(_e) => {
                       // Scene selection handled by context
                     }}
                     options={scenes.map(s => ({
