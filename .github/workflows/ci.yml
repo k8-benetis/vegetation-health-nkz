@@ -126,7 +126,12 @@ jobs:
         cache: 'npm'
     
     - name: Install dependencies
-      run: npm ci
+      run: |
+        # Update package.json to use npm SDK instead of local path
+        sed -i 's|"file:../nekazari-public/packages/sdk"|"@nekazari/sdk@^1.0.3"|' package.json
+        # Remove package-lock.json to force regeneration with npm SDK
+        rm -f package-lock.json
+        npm install
     
     - name: Type check
       run: npm run typecheck
