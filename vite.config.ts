@@ -24,12 +24,8 @@ function replaceJsxRuntime() {
         // Return the alias path - Vite will resolve it to the physical file
         return path.resolve(__dirname, 'node_modules/react/jsx-runtime.js');
       }
-      // Also intercept @nekazari/sdk to ensure it resolves correctly
-      if (source === '@nekazari/sdk') {
-        const sdkPath = path.resolve(__dirname, 'node_modules/@nekazari/sdk/dist/index.js');
-        // Check if file exists (will fail build if not, which is what we want)
-        return sdkPath;
-      }
+      // Don't intercept @nekazari/sdk - let Vite resolve it normally from node_modules
+      // The SDK is installed from npm and should resolve via package.json exports
       return null;
     },
     // After build, find the actual bundled jsx-runtime file
@@ -122,8 +118,7 @@ export default defineConfig({
       // When Vite sees a file path, it bundles it instead of externalizing
       'react/jsx-runtime': path.resolve(__dirname, 'node_modules/react/jsx-runtime.js'),
       'react/jsx-dev-runtime': path.resolve(__dirname, 'node_modules/react/jsx-dev-runtime.js'),
-      // Ensure @nekazari/sdk resolves correctly by pointing to the dist file
-      '@nekazari/sdk': path.resolve(__dirname, 'node_modules/@nekazari/sdk/dist/index.js'),
+      // Don't alias @nekazari/sdk - let Vite resolve it normally via package.json exports
     },
     // Ensure proper resolution of node_modules
     dedupe: ['@nekazari/sdk'],
