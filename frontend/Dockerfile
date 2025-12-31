@@ -14,10 +14,12 @@ RUN sed -i 's|"file:../nekazari-public/packages/sdk"|"^1.0.3"|' package.json && 
     echo "=== Updated package.json ===" && \
     grep "@nekazari/sdk" package.json && \
     echo "=== Installing dependencies ===" && \
-    npm install && \
+    npm install --registry=https://registry.npmjs.org/ && \
     echo "=== Verifying SDK installation ===" && \
-    npm list @nekazari/sdk && \
-    test -d node_modules/@nekazari/sdk && echo "SDK directory exists" || echo "ERROR: SDK directory not found"
+    npm list @nekazari/sdk 2>&1 && \
+    ls -la node_modules/@nekazari/sdk/ 2>&1 && \
+    test -d node_modules/@nekazari/sdk && echo "✓ SDK directory exists" || (echo "ERROR: SDK directory not found" && exit 1) && \
+    test -f node_modules/@nekazari/sdk/dist/index.js && echo "✓ SDK dist/index.js exists" || (echo "ERROR: SDK dist/index.js not found" && exit 1)
 
 # Copy all necessary files for build
 COPY src/ ./src/
