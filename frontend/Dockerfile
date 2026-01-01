@@ -9,7 +9,8 @@ COPY package.json package-lock.json* ./
 
 # Temporarily update package.json to use npm SDK instead of local path
 # Remove package-lock.json to force regeneration with npm SDK
-RUN sed -i 's|"file:../nekazari-public/packages/sdk"|"^1.0.3"|' package.json && \
+RUN sed -i 's|"file:../nekazari-public/packages/sdk"|"^1.0.3"|g' package.json && \
+    sed -i 's|"@nekazari/sdk": "@nekazari/sdk@|"@nekazari/sdk": "|g' package.json && \
     rm -f package-lock.json && \
     echo "=== Updated package.json ===" && \
     grep "@nekazari/sdk" package.json && \
