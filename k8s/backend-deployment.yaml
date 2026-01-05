@@ -52,7 +52,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: redis-secret
-                  key: redis-password
+                  key: password
             # Redis Configuration (Celery + Cache) - with authentication
             - name: CELERY_BROKER_URL
               value: "redis://:$(REDIS_PASSWORD)@redis-service:6379/0"
