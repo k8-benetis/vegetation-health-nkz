@@ -157,6 +157,12 @@ async def health_check():
     return {"status": "healthy", "service": "vegetation-prime"}
 
 
+@app.get("/api/vegetation/health")
+async def vegetation_health_check():
+    """Health check endpoint for ingress routing."""
+    return {"status": "healthy", "service": "vegetation-prime"}
+
+
 class LimitsSyncRequest(BaseModel):
     """Request model for syncing limits from Core."""
     tenant_id: str
