@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 // Define the shape of our UI Kit (fallback interface)
 interface UIKit {
@@ -8,6 +8,60 @@ interface UIKit {
   Select?: any;
 }
 
+// CRITICAL: Define fallback components OUTSIDE the hook to prevent re-creation
+const FallbackCard = ({ children, className, padding }: any) => {
+  const paddingClass = padding === 'sm' ? 'p-2' : padding === 'lg' ? 'p-6' : 'p-4';
+  return (
+    <div className={`border border-gray-200 rounded-lg bg-white ${paddingClass} ${className || ''}`}>
+      {children}
+    </div>
+  );
+};
+
+const FallbackButton = ({ children, variant, size, disabled, onClick, className, ...props }: any) => {
+  const sizeClass = size === 'sm' ? 'px-3 py-1.5 text-sm' : size === 'lg' ? 'px-6 py-3 text-base' : 'px-4 py-2 text-sm';
+  const variantClass = variant === 'primary' 
+    ? 'bg-blue-600 text-white hover:bg-blue-700' 
+    : variant === 'danger'
+    ? 'bg-red-600 text-white hover:bg-red-700'
+    : variant === 'ghost'
+    ? 'bg-transparent text-gray-700 hover:bg-gray-100'
+    : 'bg-gray-200 text-gray-900 hover:bg-gray-300';
+  
+  return (
+    <button
+      {...props}
+      onClick={onClick}
+      disabled={disabled}
+      className={`${sizeClass} ${variantClass} rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className || ''}`}
+    >
+      {children}
+    </button>
+  );
+};
+
+const FallbackInput = (props: any) => (
+  <input
+    {...props}
+    className={`border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${props.className || ''}`}
+  />
+);
+
+const FallbackSelect = (props: any) => (
+  <select
+    {...props}
+    className={`border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${props.className || ''}`}
+  />
+);
+
+// Static fallback object (never changes reference)
+const FALLBACK_UI_KIT = {
+  Card: FallbackCard,
+  Button: FallbackButton,
+  Input: FallbackInput,
+  Select: FallbackSelect,
+};
+
 /**
  * Safe hook to access UI Kit components from window.__nekazariUIKit
  * 
@@ -16,8 +70,7 @@ interface UIKit {
  * 2. Polling with interval (50ms) with max timeout (5s)
  * 3. Providing fallback components if not loaded
  * 
- * This prevents React Error #130 (race condition) when components
- * try to access UI Kit before Host has initialized it.
+ * CRITICAL: Fallbacks are defined outside hook to prevent infinite re-renders
  */
 export function useUIKit() {
   const [uiKit, setUiKit] = useState<UIKit | null>(null);
@@ -54,71 +107,17 @@ export function useUIKit() {
     return () => clearInterval(interval);
   }, []);
 
-  // 3. Safe Fallback (Prevents Error #130)
-  // While waiting, return HTML primitives so React can render something.
-  if (!uiKit) {
+  // Return memoized result to prevent unnecessary re-renders
+  return useMemo(() => {
+    if (!uiKit) {
+      return FALLBACK_UI_KIT;
+    }
+
+    // Return the Real UI Kit once loaded with fallbacks for missing components
     return {
-      Card: ({ children, className, padding }: any) => {
-        const paddingClass = padding === 'sm' ? 'p-2' : padding === 'lg' ? 'p-6' : 'p-4';
-        return (
-          <div className={`border border-gray-200 rounded-lg bg-white ${paddingClass} ${className || ''}`}>
-            {children}
-          </div>
-        );
-      },
-      Button: ({ children, variant, size, disabled, onClick, className, ...props }: any) => {
-        const sizeClass = size === 'sm' ? 'px-3 py-1.5 text-sm' : size === 'lg' ? 'px-6 py-3 text-base' : 'px-4 py-2 text-sm';
-        const variantClass = variant === 'primary' 
-          ? 'bg-blue-600 text-white hover:bg-blue-700' 
-          : variant === 'danger'
-          ? 'bg-red-600 text-white hover:bg-red-700'
-          : variant === 'ghost'
-          ? 'bg-transparent text-gray-700 hover:bg-gray-100'
-          : 'bg-gray-200 text-gray-900 hover:bg-gray-300';
-        
-        return (
-          <button
-            {...props}
-            onClick={onClick}
-            disabled={disabled}
-            className={`${sizeClass} ${variantClass} rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className || ''}`}
-          >
-            {children}
-          </button>
-        );
-      },
-      Input: (props: any) => (
-        <input
-          {...props}
-          className={`border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${props.className || ''}`}
-        />
-      ),
-      Select: (props: any) => (
-        <select
-          {...props}
-          className={`border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${props.className || ''}`}
-        />
-      )
+      ...uiKit,
+      Input: uiKit.Input || FallbackInput,
+      Select: uiKit.Select || FallbackSelect,
     };
-  }
-
-  // 4. Return the Real UI Kit once loaded
-  // Note: Host only exports Card/Button. We polyfill Input/Select if missing.
-  return {
-    ...uiKit,
-    // Ensure we always have Input/Select even if Host doesn't export them
-    Input: uiKit.Input || ((props: any) => (
-      <input
-        {...props}
-        className={`border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${props.className || ''}`}
-      />
-    )),
-    Select: uiKit.Select || ((props: any) => (
-      <select
-        {...props}
-        className={`border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${props.className || ''}`}
-      />
-    ))
-  };
+  }, [uiKit]);
 }
-
