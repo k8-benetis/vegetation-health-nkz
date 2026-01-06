@@ -2,6 +2,7 @@
  * API client for Vegetation Prime backend.
  */
 
+import { useMemo } from 'react';
 import { NKZClient } from '@nekazari/sdk';
 import type {
   VegetationJob,
@@ -277,8 +278,10 @@ export function useVegetationApi(): VegetationApiClient {
     console.log('[useVegetationApi] Host auth available - token:', token ? `${token.substring(0, 20)}...` : 'undefined', 'tenantId:', tenantId);
   }
   
-  return new VegetationApiClient(
-    getTokenFromHost,
-    getTenantIdFromHost
+  // CRITICAL: Memoize the client to prevent infinite re-renders
+  // Without useMemo, a new client instance is created on every render
+  return useMemo(
+    () => new VegetationApiClient(getTokenFromHost, getTenantIdFromHost),
+    []
   );
 }
