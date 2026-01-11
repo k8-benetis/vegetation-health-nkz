@@ -79,13 +79,13 @@ const VegetationPrimeApp: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {activeTab === 'config' && (
             <VegetationConfig 
-              parcelId={null} 
+               
               mode="page" 
             />
           )}
           {activeTab === 'analytics' && (
             <VegetationAnalytics 
-              parcelId={null} 
+               
               mode="page" 
             />
           )}

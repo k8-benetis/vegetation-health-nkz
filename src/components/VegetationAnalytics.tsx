@@ -33,7 +33,7 @@ import { CalculationButton } from './widgets/CalculationButton';
 
 export interface VegetationAnalyticsProps {
   parcelId?: string | null; // Parcela seleccionada (opcional, se obtiene de useViewer si no se proporciona)
-  mode?: 'panel' | 'full-page';
+  mode?: 'panel' | 'page';
   className?: string;
 }
 
@@ -210,7 +210,7 @@ export const VegetationAnalytics: React.FC<VegetationAnalyticsProps> = ({
       </div>
 
       {/* Tabs - Horizontal in full-page, vertical or hidden in panel */}
-      {mode === 'full-page' && (
+      {mode === 'page' && (
         <div className="flex space-x-1 border-b border-slate-200">
           {[
             { id: 'calculations' as TabType, label: 'Cálculos', icon: Layers },
@@ -540,7 +540,7 @@ export const VegetationAnalytics: React.FC<VegetationAnalyticsProps> = ({
       )}
 
       {/* Timeseries Tab */}
-      {(mode === 'full-page' && activeTab === 'timeseries') && (
+      {(mode === 'page' && activeTab === 'timeseries') && (
         <Card padding={cardPadding} className="bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-xl">
           <h2 className={`${headingSize} font-semibold text-slate-800 mb-4`}>Series Temporales</h2>
           {timeseries.loading ? (
@@ -563,7 +563,7 @@ export const VegetationAnalytics: React.FC<VegetationAnalyticsProps> = ({
       )}
 
       {/* Comparison Tab */}
-      {(mode === 'full-page' && activeTab === 'comparison') && (
+      {(mode === 'page' && activeTab === 'comparison') && (
         <Card padding={cardPadding} className="bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-xl">
           <h2 className={`${headingSize} font-semibold text-slate-800 mb-4`}>Comparación A/B</h2>
           
