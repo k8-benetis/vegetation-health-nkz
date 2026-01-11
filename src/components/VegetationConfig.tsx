@@ -8,7 +8,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Save, RefreshCw, Layers, Clock, Loader2, Info } from 'lucide-react';
+import { Save, RefreshCw, Layers, Clock, Loader2, Info, AlertCircle } from 'lucide-react';
 import { useVegetationApi } from '../services/api';
 import { useVegetationContext } from '../services/vegetationContext';
 import { useAuth } from '../hooks/useAuth';
@@ -24,6 +24,7 @@ export const VegetationConfig: React.FC<VegetationConfigProps> = ({ mode = 'pane
   const api = useVegetationApi();
   const { Card, Button, Input, Badge } = useUIKit();
   const { selectedIndex, setSelectedIndex } = useVegetationContext();
+  const { isAuthenticated } = useAuth();
   
   const [config, setConfig] = useState<ConfigType | null>(null);
   const [localConfig, setLocalConfig] = useState<Partial<ConfigType>>({});
@@ -32,53 +33,44 @@ export const VegetationConfig: React.FC<VegetationConfigProps> = ({ mode = 'pane
   const [recentJobs, setRecentJobs] = useState<VegetationJob[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
 
-  // Load configuration
+  // Load config on mount
   useEffect(() => {
-    const loadConfig = async () => {
-      setLoading(true);
-      try {
-        const data = await api.getConfig();
+    loadConfig();
+    refreshJobs();
+  }, []);
+
+  const loadConfig = async () => {
+    setLoading(true);
+    try {
+      const data = await api.getConfig();
+      if (data) {
         setConfig(data);
         setLocalConfig(data);
-        
-        // Update context if default index is set
-        if (data.default_index_type && mode === 'page') {
-          // Only auto-set in page mode, in panel mode we want user selection
-        }
-      } catch (err) {
-        console.error('Error loading vegetation config:', err);
-      } finally {
-        setLoading(false);
       }
-    };
-    loadConfig();
-  }, [api, mode]);
+    } catch (err) {
+      console.error('Failed to load config:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Load recent download jobs
   const refreshJobs = async () => {
     setJobsLoading(true);
     try {
-      const data = await api.listJobs(undefined, 5); // Limit 5
-      setRecentJobs(data.jobs);
+      const jobs = await api.getRecentJobs();
+      setRecentJobs(jobs);
     } catch (err) {
-      console.error('Error loading jobs:', err);
+      // console.error(err);
     } finally {
       setJobsLoading(false);
     }
   };
 
-  useEffect(() => {
-    refreshJobs();
-    // Poll every 30s
-    const interval = setInterval(refreshJobs, 30000);
-    return () => clearInterval(interval);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (localConfig) {
-        // If changing default index in panel mode, also update current view
+      if (config) {
+        // Special case: if saving default index from panel mode
         if (mode === 'panel' && localConfig.default_index_type) {
            // We don't necessarily want this behavior, ModeSelector updates view directly
         }
@@ -94,10 +86,7 @@ export const VegetationConfig: React.FC<VegetationConfigProps> = ({ mode = 'pane
   };
 
   const handleModeChange = (indexType: string) => {
-    // Determine if we need to update config or just local state/context
     setSelectedIndex(indexType as VegetationIndexType);
-    
-    // Also update local config for persistence if user saves
     setLocalConfig(prev => ({ ...prev, default_index_type: indexType as VegetationIndexType }));
   };
 
@@ -114,6 +103,17 @@ export const VegetationConfig: React.FC<VegetationConfigProps> = ({ mode = 'pane
   // Adjust styling based on mode
   const headingSize = mode === 'panel' ? 'text-sm' : 'text-lg';
   const cardPadding = mode === 'panel' ? 'sm' : 'lg';
+  
+  if (!isAuthenticated && !loading) {
+     return (
+        <Card padding={cardPadding} className="bg-amber-50 border border-amber-200 rounded-xl">
+           <div className="flex items-center gap-2 text-amber-800">
+              <AlertCircle className="w-5 h-5" />
+              <p className="text-sm font-medium">Please log in to configure settings.</p>
+           </div>
+        </Card>
+     );
+  }
 
   return (
     <div className={`space-y-3 ${mode === 'page' ? 'max-w-4xl mx-auto py-8' : ''}`}>
