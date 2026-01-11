@@ -8,7 +8,8 @@ import { Calendar, BarChart3, Eye, EyeOff } from 'lucide-react';
 import { useViewer } from '@nekazari/sdk';
 import { useUIKit } from '../../hooks/useUIKit';
 import { useVegetationContext } from '../../services/vegetationContext';
-import { useVegetationApi, SceneStats } from '../../services/api';
+import { useVegetationApi } from '../../services/api';
+import { SceneStats } from '../../types';
 import { SmartTimeline } from '../widgets/SmartTimeline';
 
 interface TimelineWidgetProps {
