@@ -72,6 +72,8 @@ RUN pip install --no-cache-dir \
 RUN pip install --no-cache-dir \
     pystac-client==0.7.0 \
     sentinelsat==1.2.1 \
+    rio-cogeo==5.1.0 \
+    rasterstats==0.19.0 \
     pytest==7.4.3 \
     pytest-asyncio==0.21.1 \
     pytest-cov==4.1.0

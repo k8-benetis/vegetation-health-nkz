@@ -41,6 +41,7 @@ from app.services.usage_tracker import UsageTracker
 from app.middleware.limits import validate_limits_dependency
 from decimal import Decimal
 from app.api.tiles import router as tiles_router
+from app.api.crops import router as crops_router
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,7 @@ app.add_middleware(
 
 # Include tile router
 app.include_router(tiles_router)
+app.include_router(crops_router, prefix="/api", tags=["logic"])
 
 
 # =============================================================================
