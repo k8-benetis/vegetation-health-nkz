@@ -4,7 +4,7 @@
 
 export type VegetationIndexType = 'NDVI' | 'EVI' | 'SAVI' | 'GNDVI' | 'NDRE' | 'NDMI' | 'CUSTOM' | 'SAMI' | 'VRA_ZONES';
 
-export type JobType = 'download' | 'process' | 'calculate_index';
+export type JobType = 'download' | 'process' | 'calculate_index' | 'SENTINEL_INGEST' | 'ZONING';
 
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 

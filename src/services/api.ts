@@ -1,115 +1,64 @@
+import axios, { AxiosInstance } from 'axios';
+import { VegetationJob, VegetationScene, VegetationIndex, VegetationConfig, IndexCalculationParams, TimeseriesDataPoint } from '../types';
+
 /**
- * API client for Vegetation Prime backend.
+ * API Client for Vegetation Prime Backend.
  */
-
-import { useMemo } from 'react';
-import { NKZClient } from '@nekazari/sdk';
-import type {
-  VegetationJob,
-  VegetationConfig,
-  JobCreateParams,
-  IndexCalculationParams,
-  TimeseriesDataPoint,
-  VegetationScene,
-} from '../types';
-
-// Extend Window interface for TypeScript
-declare global {
-  interface Window {
-    __ENV__?: {
-      VITE_API_URL?: string;
-    };
-  }
-}
-
 export class VegetationApiClient {
-  private client: NKZClient;
+  private client: AxiosInstance;
+  private getToken: () => string | undefined;
+  private getTenantId: () => string | undefined;
 
-  constructor(getToken: () => string | undefined, getTenantId: () => string | undefined) {
-    const baseUrl = (typeof window !== 'undefined' && window.__ENV__?.VITE_API_URL) 
-      ? `${window.__ENV__.VITE_API_URL}/api/vegetation`
-      : '/api/vegetation';
-    console.log('[VegetationApiClient] Initializing with baseUrl:', baseUrl);
-    this.client = new NKZClient({
-      baseUrl: baseUrl,
-      getToken: getToken,
-      getTenantId: getTenantId,
-    });
-  }
-
-  async createJob(params: JobCreateParams): Promise<VegetationJob> {
-    const response = await this.client.post('/jobs', params);
-    return response as VegetationJob;
-  }
-
-  async getJob(jobId: string): Promise<VegetationJob> {
-    const response = await this.client.get(`/jobs/${jobId}`);
-    return response as VegetationJob;
-  }
-
-  async getJobDetails(jobId: string): Promise<{
-    job: VegetationJob;
-    index_stats?: {
-      mean: number;
-      min: number;
-      max: number;
-      std_dev: number;
-      pixel_count: number;
-    };
-    timeseries?: Array<{
-      date: string;
-      index_type: string;
-      mean_value: number;
-      min_value: number;
-      max_value: number;
-      std_dev: number;
-    }>;
-    scene_info?: {
-      id: string;
-      sensing_date: string;
-      cloud_coverage: number;
-      scene_id: string;
-    };
-  }> {
-    const response = await this.client.get(`/jobs/${jobId}/details`);
-    return response as {
-      job: VegetationJob;
-      index_stats?: {
-        mean: number;
-        min: number;
-        max: number;
-        std_dev: number;
-        pixel_count: number;
-      };
-      timeseries?: Array<{
-        date: string;
-        index_type: string;
-        mean_value: number;
-        min_value: number;
-        max_value: number;
-        std_dev: number;
-      }>;
-      scene_info?: {
-        id: string;
-        sensing_date: string;
-        cloud_coverage: number;
-        scene_id: string;
-      };
-    };
-  }
-
-  async listJobs(status?: string, limit = 50, offset = 0): Promise<{ jobs: VegetationJob[]; total: number }> {
-    const params = new URLSearchParams();
-    if (status) params.append('status', status);
-    params.append('limit', limit.toString());
-    params.append('offset', offset.toString());
+  constructor(
+    getToken: () => string | undefined, 
+    getTenantId: () => string | undefined,
+    baseUrl: string = '/api/vegetation'
+  ) {
+    this.getToken = getToken;
+    this.getTenantId = getTenantId;
     
-    const response = await this.client.get(`/jobs?${params.toString()}`);
-    return response as { jobs: VegetationJob[]; total: number };
+    this.client = axios.create({
+      baseURL: baseUrl,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // Request interceptor for auth
+    this.client.interceptors.request.use((config) => {
+      const token = this.getToken();
+      const tenantId = this.getTenantId();
+      
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      
+      if (tenantId) {
+        config.headers['X-Tenant-ID'] = tenantId;
+      }
+      
+      return config;
+    });
+    
+    // Response interceptor for error logger
+    this.client.interceptors.response.use(
+      (response) => response.data,
+      (error) => {
+        console.error('Vegetation API Error:', error.response?.status, error.response?.data);
+        return Promise.reject(error);
+      }
+    );
   }
 
-  async listScenes(
-    entityId?: string | null,
+  // --- Endpoints ---
+
+  async checkHealth(): Promise<{ status: string }> {
+    const response = await this.client.get('/health');
+    return response as { status: string };
+  }
+
+  async getScenes(
+    entityId?: string,
     startDate?: string,
     endDate?: string,
     limit = 50
@@ -193,10 +142,6 @@ export class VegetationApiClient {
     };
   }
 
-  /**
-   * Get scene statistics for timeline chart.
-   * Returns mean index values per scene for the specified period.
-   */
   async getSceneStats(
     entityId: string,
     indexType: string = "NDVI",
@@ -210,9 +155,6 @@ export class VegetationApiClient {
     return response as TimelineStatsResponse;
   }
 
-  /**
-   * Compare current year vs previous year stats.
-   */
   async compareYears(
     entityId: string,
     indexType: string = "NDVI"
@@ -227,27 +169,6 @@ export class VegetationApiClient {
   async getConfig(): Promise<VegetationConfig> {
     const response = await this.client.get('/config');
     return response as VegetationConfig;
-  }
-
-  async getRecentJobs(limit: number = 5): Promise<VegetationJob[]> {
-    return [
-      {
-        id: "job-123",
-        type: "SENTINEL_INGEST",
-        status: "completed",
-        progress_percentage: 100,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      },
-      {
-        id: "job-124",
-        type: "ZONING",
-        status: "pending",
-        progress_percentage: 45,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-    ];
   }
 
   async updateConfig(config: Partial<VegetationConfig>): Promise<{ message: string; config: VegetationConfig }> {
@@ -274,10 +195,8 @@ export class VegetationApiClient {
     message: string;
     client_id_preview?: string;
   }> {
-    console.log('[VegetationApiClient] Calling getCredentialsStatus...');
     try {
       const response = await this.client.get('/config/credentials-status');
-      console.log('[VegetationApiClient] getCredentialsStatus response:', response);
       return response as {
         available: boolean;
         source: 'platform' | 'module' | null;
@@ -289,18 +208,43 @@ export class VegetationApiClient {
       throw error;
     }
   }
+
+  async getRecentJobs(limit: number = 5): Promise<VegetationJob[]> {
+    // Mock data compliant with VegetationJob interface
+    const jobs: VegetationJob[] = [
+      {
+        id: 'job-123',
+        tenant_id: 'default',
+        job_type: 'SENTINEL_INGEST',
+        status: 'completed',
+        progress_percentage: 100,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 'job-124',
+        tenant_id: 'default',
+        job_type: 'ZONING',
+        status: 'pending',
+        progress_percentage: 45,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ];
+    
+    return jobs.slice(0, limit);
+  }
 }
 
 // Hook for using API client
+import { useMemo } from 'react';
+
 export function useVegetationApi(): VegetationApiClient {
-  // Access host auth context directly from window (more reliable than SDK's useAuth in remote modules)
-  // The host exposes KeycloakAuthContextType with getToken() function and tenantId property
   const getTokenFromHost = (): string | undefined => {
     try {
       const hostAuth = (window as any).__nekazariAuthContext;
       if (hostAuth && typeof hostAuth.getToken === 'function') {
-        const token = hostAuth.getToken();
-        return token;
+        return hostAuth.getToken();
       }
     } catch (error) {
       console.warn('[useVegetationApi] Error accessing host auth:', error);
@@ -320,27 +264,11 @@ export function useVegetationApi(): VegetationApiClient {
     return undefined;
   };
 
-  // Check if host auth is available
-  const hostAuth = (window as any).__nekazariAuthContext;
-  if (!hostAuth) {
-    console.warn('[useVegetationApi] Host auth context not available in window.__nekazariAuthContext');
-  } else {
-    const token = getTokenFromHost();
-    const tenantId = getTenantIdFromHost();
-    console.log('[useVegetationApi] Host auth available - token:', token ? `${token.substring(0, 20)}...` : 'undefined', 'tenantId:', tenantId);
-  }
-  
-  // CRITICAL: Memoize the client to prevent infinite re-renders
-  // Without useMemo, a new client instance is created on every render
   return useMemo(
     () => new VegetationApiClient(getTokenFromHost, getTenantIdFromHost),
     []
   );
 }
-
-// ============================================================================
-// Smart Timeline Stats API
-// ============================================================================
 
 export interface SceneStats {
   scene_id: string;
@@ -382,7 +310,3 @@ export interface YearComparisonResponse {
     }>;
   };
 }
-
-// Add these methods to VegetationApiClient class - copy into class manually if needed
-// async getSceneStats(entityId: string, indexType: string = 'NDVI', months: number = 12): Promise<TimelineStatsResponse>
-// async compareYears(entityId: string, indexType: string = 'NDVI'): Promise<YearComparisonResponse>
