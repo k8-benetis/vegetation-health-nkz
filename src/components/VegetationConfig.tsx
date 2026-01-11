@@ -11,6 +11,7 @@ import React, { useEffect, useState } from 'react';
 import { Save, RefreshCw, Layers, Clock, Loader2, Info } from 'lucide-react';
 import { useVegetationApi } from '../services/api';
 import { useVegetationContext } from '../services/vegetationContext';
+import { useAuth } from '../hooks/useAuth';
 import { useUIKit } from '../hooks/useUIKit';
 import { ModeSelector } from './widgets/ModeSelector';
 import type { VegetationConfig as ConfigType, VegetationIndexType, VegetationJob } from '../types';

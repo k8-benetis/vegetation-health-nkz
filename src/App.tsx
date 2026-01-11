@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { Settings, BarChart3, Info } from 'lucide-react';
 import { VegetationProvider } from './services/vegetationContext';
 import { VegetationConfig } from './components/VegetationConfig';
+import { VegetationAnalytics } from './components/VegetationAnalytics';
 import './index.css';
 
 // Slot components (exported for host integration)
@@ -70,17 +71,13 @@ const VegetationPrimeApp: React.FC = () => {
           </div>
         </div>
 
-        {/* Tab Content - Using refactored components */}
+        {/* Tab Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {activeTab === 'config' && (
-            <VegetationConfig 
-              mode="page" 
-            />
+            <VegetationConfig mode="page" />
           )}
           {activeTab === 'analytics' && (
-            <VegetationConfig 
-              mode="page" 
-            />
+            <VegetationAnalytics />
           )}
         </div>
       </div>
