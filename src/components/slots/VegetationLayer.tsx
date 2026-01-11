@@ -50,7 +50,7 @@ export function createVegetationLayer(
         getFillColor: [160, 160, 180, 200],
         getLineColor: [0, 0, 0, 255],
         getElevation: (d: any) => d.properties.cluster_id * 10 || 10, 
-        onHover: ({object}: any) => {
+        onHover: ({object: _object}: any) => {
             // Tooltip handled by host
         }
      });

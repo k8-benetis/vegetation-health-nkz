@@ -6,7 +6,8 @@ import { DistributionHistogram } from './analytics/DistributionHistogram';
 import { useAuth } from '../hooks/useAuth';
 
 export const VegetationAnalytics: React.FC = () => {
-    const { selectedIndex, selectedDate, selectedEntityId } = useVegetationContext();
+    // Removed unused selectedDate
+    const { selectedIndex, selectedEntityId } = useVegetationContext();
     const { isAuthenticated } = useAuth();
     
     if (!isAuthenticated) {
@@ -40,7 +41,7 @@ export const VegetationAnalytics: React.FC = () => {
                 </div>
                 <div className="h-64 bg-slate-50 rounded-lg flex items-center justify-center">
                     {/* Placeholder for real component */}
-                    <TimeseriesChart />
+                    <TimeseriesChart series={[]} indexType={selectedIndex} />
                 </div>
             </Card>
 
@@ -52,7 +53,7 @@ export const VegetationAnalytics: React.FC = () => {
                        <p className="text-xs text-slate-500">Pixel frequency for current view</p>
                     </div>
                      <div className="h-48 bg-slate-50 rounded-lg">
-                        <DistributionHistogram />
+                        <DistributionHistogram values={[]} indexType={selectedIndex} />
                      </div>
                 </Card>
 
