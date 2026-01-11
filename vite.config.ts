@@ -13,9 +13,9 @@ export default defineConfig({
       exposes: {
         './App': './src/App.tsx',
         './viewerSlots': './src/slots/index.tsx',
-        './VegetationLayer': './src/components/slots/VegetationLayer.tsx',
-        './TimelineWidget': './src/components/slots/TimelineWidget.tsx',
-        './VegetationLayerControl': './src/components/slots/VegetationLayerControl.tsx',
+        './VegetationLayer': './src/exports/VegetationLayer.tsx',
+        './TimelineWidget': './src/exports/TimelineWidget.tsx',
+        './VegetationLayerControl': './src/exports/VegetationLayerControl.tsx',
       },
       shared: {
         // CRITICAL: React MUST be shared as singleton to avoid hook errors
