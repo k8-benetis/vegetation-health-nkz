@@ -32,15 +32,6 @@ export type ModuleViewerSlots = Record<SlotType, SlotWidgetDefinition[]> & {
 /**
  * Vegetation Prime Slots Configuration
  * These slots integrate the module into the Unified Viewer
- */
-export const vegetationPrimeSlots: ModuleViewerSlots = {
-  'layer-toggle': [],
-  'context-panel': [
-    {
-      id: 'vegetation-config',
-      component: 'VegetationConfig',
-      priority: 20,
-      localComponent: VegetationConfig,
       defaultProps: { mode: 'panel' },
       showWhen: {
         entityType: ['AgriParcel']
