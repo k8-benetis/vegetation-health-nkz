@@ -16,6 +16,7 @@ export interface VegetationJob {
   progress_percentage: number;
   progress_message?: string;
   created_at: string;
+  updated_at?: string;
   started_at?: string;
   completed_at?: string;
   result?: Record<string, any>;
