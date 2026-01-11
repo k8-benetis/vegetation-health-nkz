@@ -8,6 +8,7 @@ import { VegetationLayerControl } from '../components/slots/VegetationLayerContr
 import { TimelineWidget } from '../components/slots/TimelineWidget';
 import { VegetationConfig } from '../components/VegetationConfig';
 import { VegetationAnalytics } from '../components/VegetationAnalytics';
+import { VegetationProvider } from '../services/vegetationContext';
 
 // Type definitions for slot widgets (matching SDK types)
 export interface SlotWidgetDefinition {
@@ -27,6 +28,27 @@ export type SlotType = 'layer-toggle' | 'context-panel' | 'bottom-panel' | 'enti
 export type ModuleViewerSlots = Record<SlotType, SlotWidgetDefinition[]>;
 
 /**
+ * Wrapped components with VegetationProvider for standalone slot usage
+ */
+const TimelineWidgetWithProvider: React.FC<any> = (props) => (
+  <VegetationProvider>
+    <TimelineWidget {...props} />
+  </VegetationProvider>
+);
+
+const VegetationConfigWithProvider: React.FC<any> = (props) => (
+  <VegetationProvider>
+    <VegetationConfig {...props} />
+  </VegetationProvider>
+);
+
+const VegetationAnalyticsWithProvider: React.FC<any> = (props) => (
+  <VegetationProvider>
+    <VegetationAnalytics {...props} />
+  </VegetationProvider>
+);
+
+/**
  * Vegetation Prime Slots Configuration
  * These slots integrate the module into the Unified Viewer
  */
@@ -44,20 +66,20 @@ export const vegetationPrimeSlots: ModuleViewerSlots = {
       id: 'vegetation-config',
       component: 'VegetationConfig',
       priority: 20,
-      localComponent: VegetationConfig,
-      defaultProps: { mode: 'panel' }, // Always in panel mode
+      localComponent: VegetationConfigWithProvider,
+      defaultProps: { mode: 'panel' },
       showWhen: {
-        entityType: ['AgriParcel'] // Only show when a parcel is selected
+        entityType: ['AgriParcel']
       }
     },
     {
       id: 'vegetation-analytics',
       component: 'VegetationAnalytics',
       priority: 30,
-      localComponent: VegetationAnalytics,
-      defaultProps: { mode: 'panel' }, // Always in panel mode
+      localComponent: VegetationAnalyticsWithProvider,
+      defaultProps: { mode: 'panel' },
       showWhen: {
-        entityType: ['AgriParcel'] // Only show when a parcel is selected
+        entityType: ['AgriParcel']
       }
     }
   ],
@@ -66,15 +88,13 @@ export const vegetationPrimeSlots: ModuleViewerSlots = {
       id: 'vegetation-timeline',
       component: 'TimelineWidget',
       priority: 10,
-      localComponent: TimelineWidget
+      localComponent: TimelineWidgetWithProvider
     }
   ],
-  'entity-tree': [] // No widgets for entity tree
+  'entity-tree': []
 };
 
 /**
  * Export as viewerSlots for host integration
- * The host will look for this export to register slots
  */
 export const viewerSlots = vegetationPrimeSlots;
-

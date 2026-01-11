@@ -322,6 +322,6 @@ AND updated_at < NOW() - INTERVAL '30 days';
 
 ---
 
-**Last Updated**: December 2024  
+**Last Updated**: December 2025
 **Version**: 1.9.0
 

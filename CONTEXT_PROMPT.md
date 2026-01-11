@@ -291,3 +291,8 @@ const parcelId = selectedEntityType === 'AgriParcel' ? selectedEntityId : null;
 - **Sin deuda técnica**: Componentes deben ser mantenibles y reutilizables
 
 
+
+
+
+
+
