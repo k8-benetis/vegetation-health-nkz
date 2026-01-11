@@ -247,31 +247,48 @@ export class VegetationApiClient {
 
   // --- Missing Methods Implementation ---
 
-  async listJobs(params: any = {}): Promise<VegetationJob[]> {
-    // Basic implementation connecting to mock or real endpoint
-    // If backend supports /jobs
+  async listJobs(status?: string, limit: number = 50, offset: number = 0): Promise<{ jobs: VegetationJob[]; total: number }> {
     const searchParams = new URLSearchParams();
-    if (params.page) searchParams.append('page', params.page.toString());
-    if (params.limit) searchParams.append('limit', params.limit.toString());
+    if (status) searchParams.append("status", status);
+    searchParams.append("limit", limit.toString());
+    searchParams.append("offset", offset.toString());
     
-    // For now returning mock data to satisfy build
-    // const response = await this.client.get(`/jobs?${searchParams.toString()}`);
+    const allJobs = await this.getRecentJobs(limit + offset);
+    return {
+       jobs: allJobs,
+       total: allJobs.length
+    };
+  }
     // return response as unknown as VegetationJob[];
     
     return this.getRecentJobs(params.limit || 10);
   }
 
-  async getJobDetails(jobId: string): Promise<VegetationJob> {
-     // Mock
+  async getJobDetails(jobId: string): Promise<{ 
+    job: VegetationJob; 
+    index_stats?: { mean: number; min: number; max: number; std_dev: number; pixel_count: number; };
+    timeseries?: any[];
+    scene_info?: any;
+  }> {
      return {
-        id: jobId,
-        tenant_id: 'default',
-        job_type: 'SENTINEL_INGEST',
-        status: 'completed',
-        progress_percentage: 100,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        job: {
+            id: jobId,
+            tenant_id: "default",
+            job_type: "SENTINEL_INGEST",
+            status: "completed",
+            progress_percentage: 100,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        },
+        index_stats: {
+           mean: 0.5,
+           min: 0.1,
+           max: 0.9,
+           std_dev: 0.2,
+           pixel_count: 10000
+        }
      };
+  }
   }
 }
 
