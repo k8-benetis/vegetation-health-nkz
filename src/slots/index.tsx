@@ -4,7 +4,7 @@
  * Uses shared moduleProvider pattern supported by Host.
  */
 
-import { VegetationLayerControl } from '../components/slots/VegetationLayerControl';
+// import { VegetationLayerControl } from '../components/slots/VegetationLayerControl';
 import { TimelineWidget } from '../components/slots/TimelineWidget';
 import { VegetationConfig } from '../components/VegetationConfig';
 import { VegetationAnalytics } from '../components/VegetationAnalytics';
@@ -34,14 +34,7 @@ export type ModuleViewerSlots = Record<SlotType, SlotWidgetDefinition[]> & {
  * These slots integrate the module into the Unified Viewer
  */
 export const vegetationPrimeSlots: ModuleViewerSlots = {
-  'layer-toggle': [
-    {
-      id: 'vegetation-layer-control',
-      component: 'VegetationLayerControl',
-      priority: 10,
-      localComponent: VegetationLayerControl,
-    }
-  ],
+  'layer-toggle': [],
   'context-panel': [
     {
       id: 'vegetation-config',
