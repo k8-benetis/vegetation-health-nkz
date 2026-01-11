@@ -4,9 +4,8 @@
  * Allows visual navigation through historical vegetation data.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
-  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -17,7 +16,7 @@ import {
   Area,
   ComposedChart,
 } from 'recharts';
-import { Calendar, TrendingUp, TrendingDown, CloudOff, Layers } from 'lucide-react';
+import { Calendar, TrendingUp, TrendingDown, CloudOff } from 'lucide-react';
 
 interface SceneStats {
   scene_id: string;

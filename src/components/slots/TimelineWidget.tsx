@@ -10,7 +10,6 @@ import { useUIKit } from '../../hooks/useUIKit';
 import { useVegetationContext } from '../../services/vegetationContext';
 import { useVegetationApi, SceneStats } from '../../services/api';
 import { SmartTimeline } from '../widgets/SmartTimeline';
-import type { VegetationScene } from '../../types';
 
 interface TimelineWidgetProps {
   entityId?: string;
