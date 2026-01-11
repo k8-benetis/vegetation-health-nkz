@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { BitmapLayer } from '@deck.gl/layers';
+import { BitmapLayer, GeoJsonLayer } from '@deck.gl/layers';
 import { TileLayer } from '@deck.gl/geo-layers';
 import { useVegetationContext } from '../../services/vegetationContext';
 import type { VegetationIndexType } from '../../types';
@@ -21,19 +21,42 @@ interface VegetationLayerProps {
 }
 
 /**
- * Creates a Deck.gl TileLayer for vegetation indices.
+ * Creates a Deck.gl TileLayer for vegetation indices or Zoning.
  * This function returns a layer configuration, not a React component.
  */
 export function createVegetationLayer(
   selectedIndex: VegetationIndexType,
   selectedDate: string | null,
   sceneId?: string
-): TileLayer | null {
-  if (!selectedDate || !sceneId) {
-    return null;
+): TileLayer | GeoJsonLayer | null {
+  if (!selectedDate && selectedIndex !== 'VRA_ZONES') {
+     return null;
+  }
+  
+  if (!sceneId) return null;
+
+  // Handle Zoning (Vector)
+  if (selectedIndex === 'VRA_ZONES') {
+     // Fetch GeoJSON for the parcel's management zones
+     return new GeoJsonLayer({
+        id: 'zoning-layer',
+        data: `/api/jobs/zoning/${sceneId}/geojson`, 
+        pickable: true,
+        stroked: true,
+        filled: true,
+        extruded: true,
+        lineWidthScale: 20,
+        lineWidthMinPixels: 2,
+        getFillColor: [160, 160, 180, 200],
+        getLineColor: [0, 0, 0, 255],
+        getElevation: (d: any) => d.properties.cluster_id * 10 || 10, 
+        onHover: ({object}: any) => {
+            // Tooltip handled by host
+        }
+     });
   }
 
-  // Build tile URL template
+  // Handle Raster (Optical & SAR)
   const tileUrl = `/api/vegetation/tiles/{z}/{x}/{y}.png?scene_id=${sceneId}&index_type=${selectedIndex}`;
 
   // Create BitmapLayer for each tile
@@ -45,26 +68,22 @@ export function createVegetationLayer(
       image: tile.data,
       bounds: bbox,
       opacity: 0.8,
-      // Enable transparency
       transparent: true,
-      // Color mode for vegetation visualization
       colorMode: 'multiply',
     });
   };
 
   // Create TileLayer
   return new TileLayer({
-    id: 'vegetation-layer',
+    id: `vegetation-layer-${selectedIndex}`,
     data: tileUrl,
     minZoom: 0,
     maxZoom: 18,
     tileSize: 256,
     renderSubLayers,
-    // Update strategy for smooth panning
     updateTriggers: {
       getTileData: [selectedIndex, selectedDate, sceneId],
     },
-    // Error handling
     onTileError: (error: Error, tile: any) => {
       console.warn('Tile load error:', error, tile);
     },
@@ -77,19 +96,21 @@ export function createVegetationLayer(
  */
 export function useVegetationLayer(
   sceneId?: string
-): TileLayer | null {
+): TileLayer | GeoJsonLayer | null {
   const { selectedIndex, selectedDate, selectedSceneId } = useVegetationContext();
-  const [layer, setLayer] = useState<TileLayer | null>(null);
+  const [layer, setLayer] = useState<TileLayer | GeoJsonLayer | null>(null);
 
   // Use provided sceneId or fallback to context
   const effectiveSceneId = sceneId || selectedSceneId;
 
   useEffect(() => {
-    if (selectedDate && effectiveSceneId) {
-      const newLayer = createVegetationLayer(selectedIndex, selectedDate, effectiveSceneId);
-      setLayer(newLayer);
+    // For VRA_ZONES, we may not need a Date, but we need an Entity/Scene ID
+    if (selectedIndex === 'VRA_ZONES' && effectiveSceneId) {
+        setLayer(createVegetationLayer(selectedIndex, null, effectiveSceneId));
+    } else if (selectedDate && effectiveSceneId) {
+        setLayer(createVegetationLayer(selectedIndex, selectedDate, effectiveSceneId));
     } else {
-      setLayer(null);
+        setLayer(null);
     }
   }, [selectedIndex, selectedDate, effectiveSceneId]);
 
@@ -98,13 +119,6 @@ export function useVegetationLayer(
 
 /**
  * React component wrapper for vegetation layer.
- * This component manages the layer lifecycle and provides it to the parent.
- * 
- * Usage in UnifiedViewer:
- * ```tsx
- * const vegetationLayer = useVegetationLayer(sceneId);
- * <DeckGL layers={[vegetationLayer, ...otherLayers]} />
- * ```
  */
 export const VegetationLayer: React.FC<VegetationLayerProps> = ({
   onLayerReady,
@@ -118,30 +132,7 @@ export const VegetationLayer: React.FC<VegetationLayerProps> = ({
     }
   }, [layer, onLayerReady]);
 
-  // This component doesn't render anything
-  // It just manages the layer state
   return null;
 };
 
-/**
- * Standalone function to get layer configuration.
- * Useful for integration with external Deck.gl setups.
- */
-export function getVegetationLayerConfig(
-  selectedIndex: VegetationIndexType,
-  selectedDate: string | null,
-  sceneId?: string
-): {
-  layer: TileLayer | null;
-  isReady: boolean;
-} {
-  const layer = createVegetationLayer(selectedIndex, selectedDate, sceneId);
-  
-  return {
-    layer,
-    isReady: layer !== null && selectedDate !== null,
-  };
-}
-
 export default VegetationLayer;
-

@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { Leaf, Droplets, Sprout, Activity } from 'lucide-react';
+import { Leaf, Droplets, Sprout, Activity, Waves, Map as MapIcon } from 'lucide-react';
 
 interface ModeOption {
   id: string;
@@ -37,6 +37,15 @@ const MODES: ModeOption[] = [
     bgColor: 'bg-blue-50'
   },
   {
+    id: 'radar',
+    label: 'Humedad Suelo',
+    description: 'Radar Sentinel-1 (SAMI)',
+    icon: Waves,
+    indexType: 'SAMI',
+    color: 'text-indigo-600',
+    bgColor: 'bg-indigo-50'
+  },
+  {
     id: 'nutrition',
     label: 'Nutrición',
     description: 'Clorofila (NDRE)',
@@ -53,6 +62,15 @@ const MODES: ModeOption[] = [
     indexType: 'SAVI',
     color: 'text-emerald-600',
     bgColor: 'bg-emerald-50'
+  },
+  {
+    id: 'zoning',
+    label: 'Zonificación',
+    description: 'VRA Clusters (IA)',
+    icon: MapIcon,
+    indexType: 'VRA_ZONES',
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-50'
   }
 ];
 
