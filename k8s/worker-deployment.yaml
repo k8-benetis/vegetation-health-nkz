@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-backend:v1.13.0
+          image: ghcr.io/k8-benetis/vegetation-health-nkz/vegetation-prime-backend:latest
           imagePullPolicy: Always
           command:
             [
