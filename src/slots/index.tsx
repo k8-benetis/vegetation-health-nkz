@@ -1,6 +1,7 @@
 /**
  * Slot Registration for Vegetation Prime Module
  * Defines all slots that integrate with the Unified Viewer
+ * All components wrapped with VegetationProvider for standalone usage
  */
 
 import React from 'react';
@@ -29,7 +30,14 @@ export type ModuleViewerSlots = Record<SlotType, SlotWidgetDefinition[]>;
 
 /**
  * Wrapped components with VegetationProvider for standalone slot usage
+ * ALL slots must have provider since they render independently
  */
+const VegetationLayerControlWithProvider: React.FC<any> = (props) => (
+  <VegetationProvider>
+    <VegetationLayerControl {...props} />
+  </VegetationProvider>
+);
+
 const TimelineWidgetWithProvider: React.FC<any> = (props) => (
   <VegetationProvider>
     <TimelineWidget {...props} />
@@ -58,7 +66,7 @@ export const vegetationPrimeSlots: ModuleViewerSlots = {
       id: 'vegetation-layer-control',
       component: 'VegetationLayerControl',
       priority: 10,
-      localComponent: VegetationLayerControl,
+      localComponent: VegetationLayerControlWithProvider,
     }
   ],
   'context-panel': [
