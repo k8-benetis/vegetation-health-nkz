@@ -1,5 +1,7 @@
 /**
  * Global state context for Vegetation Prime module.
+ * Context is OPTIONAL - returns default values when no provider present.
+ * This allows slots to work independently without requiring a shared provider.
  */
 
 import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
@@ -15,6 +17,18 @@ interface VegetationContextType {
   setSelectedEntityId: (entityId: string | null) => void;
   setSelectedSceneId: (sceneId: string | null) => void;
 }
+
+// Default context values for standalone usage
+const defaultContext: VegetationContextType = {
+  selectedIndex: 'NDVI',
+  selectedDate: null,
+  selectedEntityId: null,
+  selectedSceneId: null,
+  setSelectedIndex: () => {},
+  setSelectedDate: () => {},
+  setSelectedEntityId: () => {},
+  setSelectedSceneId: () => {},
+};
 
 const VegetationContext = createContext<VegetationContextType | undefined>(undefined);
 
@@ -58,11 +72,16 @@ export function VegetationProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Hook to access vegetation context.
+ * Returns default values if no provider is present (allows standalone slot usage).
+ */
 export function useVegetationContext(): VegetationContextType {
   const context = useContext(VegetationContext);
+  // Return default context if not in provider - allows standalone slot usage
   if (!context) {
-    throw new Error('useVegetationContext must be used within VegetationProvider');
+    console.warn('[VegetationContext] No provider found, using default values');
+    return defaultContext;
   }
   return context;
 }
-
