@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { VegetationJob, VegetationScene, VegetationConfig, IndexCalculationParams, TimeseriesDataPoint } from '../types';
+import { VegetationJob, VegetationScene, VegetationConfig, IndexCalculationParams, TimeseriesDataPoint, TimelineStatsResponse, YearComparisonResponse } from '../types';
 
 /**
  * API Client for Vegetation Prime Backend.
@@ -44,7 +44,6 @@ export class VegetationApiClient {
     this.client.interceptors.response.use(
       (response) => response.data,
       (error) => {
-        // console.error('Vegetation API Error:', error.response?.status, error.response?.data);
         return Promise.reject(error);
       }
     );
@@ -57,7 +56,6 @@ export class VegetationApiClient {
     return response as unknown as { status: string };
   }
 
-  // Alias for listScenes to support older calls or just rename getScenes
   async listScenes(
     entityId?: string,
     startDate?: string,
@@ -259,10 +257,6 @@ export class VegetationApiClient {
        total: allJobs.length
     };
   }
-    // return response as unknown as VegetationJob[];
-    
-    return this.getRecentJobs(params.limit || 10);
-  }
 
   async getJobDetails(jobId: string): Promise<{ 
     job: VegetationJob; 
@@ -288,7 +282,6 @@ export class VegetationApiClient {
            pixel_count: 10000
         }
      };
-  }
   }
 }
 
@@ -324,45 +317,4 @@ export function useVegetationApi(): VegetationApiClient {
     () => new VegetationApiClient(getTokenFromHost, getTenantIdFromHost),
     []
   );
-}
-
-export interface SceneStats {
-  scene_id: string;
-  sensing_date: string;
-  mean_value: number | null;
-  min_value: number | null;
-  max_value: number | null;
-  std_dev: number | null;
-  cloud_coverage: number | null;
-}
-
-export interface TimelineStatsResponse {
-  entity_id: string;
-  index_type: string;
-  stats: SceneStats[];
-  period_start: string;
-  period_end: string;
-}
-
-export interface YearComparisonResponse {
-  entity_id: string;
-  index_type: string;
-  current_year: {
-    year: number;
-    stats: Array<{
-      month: number;
-      day: number;
-      mean_value: number | null;
-      sensing_date: string;
-    }>;
-  };
-  previous_year: {
-    year: number;
-    stats: Array<{
-      month: number;
-      day: number;
-      mean_value: number | null;
-      sensing_date: string;
-    }>;
-  };
 }
