@@ -6,7 +6,6 @@
 
 import React from 'react';
 import { Leaf, Droplets, Sprout, Activity } from 'lucide-react';
-import { useUIKit } from '../../hooks/useUIKit';
 
 interface ModeOption {
   id: string;

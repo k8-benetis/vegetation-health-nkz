@@ -4,7 +4,7 @@
  * Allows visual navigation through historical vegetation data.
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   LineChart,
   Line,
@@ -67,7 +67,6 @@ export const SmartTimeline: React.FC<SmartTimelineProps> = ({
   showComparison = false,
   isLoading = false,
 }) => {
-  const [hoveredPoint, setHoveredPoint] = useState<SceneStats | null>(null);
   
   const colors = INDEX_COLORS[indexType] || INDEX_COLORS.NDVI;
   

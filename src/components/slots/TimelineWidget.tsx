@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Calendar, Loader2, BarChart3, Eye, EyeOff } from 'lucide-react';
+import { Calendar, BarChart3, Eye, EyeOff } from 'lucide-react';
 import { useViewer } from '@nekazari/sdk';
 import { useUIKit } from '../../hooks/useUIKit';
 import { useVegetationContext } from '../../services/vegetationContext';

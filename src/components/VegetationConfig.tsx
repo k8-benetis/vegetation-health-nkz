@@ -8,7 +8,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Settings, Save, RefreshCw, Layers, Cloud, Clock, CheckCircle, XCircle, Loader2, Info } from 'lucide-react';
+import { Save, RefreshCw, Layers, Clock, Loader2, Info } from 'lucide-react';
 import { useVegetationApi } from '../services/api';
 import { useVegetationContext } from '../services/vegetationContext';
 import { useUIKit } from '../hooks/useUIKit';
@@ -21,7 +21,7 @@ interface VegetationConfigProps {
 
 export const VegetationConfig: React.FC<VegetationConfigProps> = ({ mode = 'panel' }) => {
   const api = useVegetationApi();
-  const { Card, Button, Input, Select, Badge } = useUIKit();
+  const { Card, Button, Input, Badge } = useUIKit();
   const { selectedIndex, setSelectedIndex } = useVegetationContext();
   
   const [config, setConfig] = useState<ConfigType | null>(null);
@@ -113,7 +113,6 @@ export const VegetationConfig: React.FC<VegetationConfigProps> = ({ mode = 'pane
   // Adjust styling based on mode
   const headingSize = mode === 'panel' ? 'text-sm' : 'text-lg';
   const cardPadding = mode === 'panel' ? 'sm' : 'lg';
-  const textSize = mode === 'panel' ? 'text-sm' : 'text-base';
 
   return (
     <div className={`space-y-3 ${mode === 'page' ? 'max-w-4xl mx-auto py-8' : ''}`}>

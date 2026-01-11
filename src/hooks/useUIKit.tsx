@@ -6,6 +6,7 @@ interface UIKit {
   Button: any;
   Input?: any;
   Select?: any;
+  Badge?: any;
 }
 
 // CRITICAL: Define fallback components OUTSIDE the hook to prevent re-creation
@@ -54,12 +55,24 @@ const FallbackSelect = (props: any) => (
   />
 );
 
+const FallbackBadge = ({ children, variant, className }: any) => {
+  const colorClass = variant === 'success' ? 'bg-green-100 text-green-800' :
+                     variant === 'error' ? 'bg-red-100 text-red-800' :
+                     'bg-yellow-100 text-yellow-800';
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${colorClass} ${className || ''}`}>
+      {children}
+    </span>
+  );
+};
+
 // Static fallback object (never changes reference)
 const FALLBACK_UI_KIT = {
   Card: FallbackCard,
   Button: FallbackButton,
   Input: FallbackInput,
   Select: FallbackSelect,
+  Badge: FallbackBadge,
 };
 
 /**
@@ -118,6 +131,7 @@ export function useUIKit() {
       ...uiKit,
       Input: uiKit.Input || FallbackInput,
       Select: uiKit.Select || FallbackSelect,
+      Badge: uiKit.Badge || FallbackBadge,
     };
   }, [uiKit]);
 }

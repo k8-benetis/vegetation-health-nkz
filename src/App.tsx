@@ -80,13 +80,13 @@ const VegetationPrimeApp: React.FC = () => {
           {activeTab === 'config' && (
             <VegetationConfig 
               parcelId={null} 
-              mode="full-page" 
+              mode="page" 
             />
           )}
           {activeTab === 'analytics' && (
             <VegetationAnalytics 
               parcelId={null} 
-              mode="full-page" 
+              mode="page" 
             />
           )}
         </div>
