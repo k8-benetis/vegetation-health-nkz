@@ -79,3 +79,4 @@ class VegetationCustomFormula(BaseModel, TenantMixin):
         {'comment': 'User-defined custom vegetation index formulas'},
     )
 
+# Force update
