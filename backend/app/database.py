@@ -6,15 +6,13 @@ import os
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import NullPool
-# Removed contextmanager import - using generator function directly
-
 from app.models.base import Base
 
 # Database URL
-DATABASE_URL = os.getenv(
-    'DATABASE_URL',
-    'postgresql://postgres:postgres@localhost:5432/nekazari'
-)
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable is required.")
 
 # Create engine
 engine = create_engine(
@@ -77,4 +75,3 @@ def get_db_with_tenant(tenant_id: str):
 def init_db():
     """Initialize database (create tables)."""
     Base.metadata.create_all(bind=engine)
-
