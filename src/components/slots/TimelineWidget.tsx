@@ -1,15 +1,15 @@
 /**
  * Timeline Widget - Slot component for bottom panel.
- * Displays available scenes in a horizontal timeline with cloud coverage indicators.
+ * Enhanced with Smart Timeline showing index trends over time.
  */
 
-import React, { useEffect, useState } from 'react';
-import { Calendar, Loader2, Filter } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Calendar, Loader2, BarChart3, Eye, EyeOff } from 'lucide-react';
 import { useViewer } from '@nekazari/sdk';
 import { useUIKit } from '../../hooks/useUIKit';
 import { useVegetationContext } from '../../services/vegetationContext';
-import { useVegetationApi } from '../../services/api';
-import { CloudCoverIndicator } from '../widgets/CloudCoverIndicator';
+import { useVegetationApi, SceneStats } from '../../services/api';
+import { SmartTimeline } from '../widgets/SmartTimeline';
 import type { VegetationScene } from '../../types';
 
 interface TimelineWidgetProps {
@@ -29,103 +29,105 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
   } = useVegetationContext();
 
   const api = useVegetationApi();
-  const [scenes, setScenes] = useState<VegetationScene[]>([]);
+  const [stats, setStats] = useState<SceneStats[]>([]);
+  const [previousYearStats, setPreviousYearStats] = useState<SceneStats[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filterClouds, setFilterClouds] = useState(true);
-  const [cloudThreshold, setCloudThreshold] = useState(20); // Default, will be loaded from config
+  const [showComparison, setShowComparison] = useState(false);
+  const [showChart, setShowChart] = useState(true);
 
   const effectiveEntityId = entityId || selectedEntityId;
 
-  // Load config to get cloud threshold
-  useEffect(() => {
-    const loadConfig = async () => {
-      try {
-        const config = await api.getConfig();
-        if (config.cloud_coverage_threshold) {
-          setCloudThreshold(config.cloud_coverage_threshold);
-        }
-      } catch (err) {
-        console.error('Error loading config for cloud threshold:', err);
-        // Keep default 20%
+  // Load stats for the timeline chart
+  const loadStats = useCallback(async () => {
+    if (!effectiveEntityId) return;
+    
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Load current period stats
+      const response = await api.getSceneStats(effectiveEntityId, selectedIndex, 12);
+      setStats(response.stats);
+
+      // Auto-select most recent scene if none selected
+      if (!selectedDate && response.stats.length > 0) {
+        const mostRecent = response.stats[0]; // Already sorted desc
+        setSelectedDate(mostRecent.sensing_date);
+        setSelectedSceneId(mostRecent.scene_id);
       }
-    };
-    loadConfig();
-  }, [api]);
-
-  // Filter scenes by cloud coverage
-  const filteredScenes = filterClouds
-    ? scenes.filter((scene) => (scene.cloud_coverage ?? 100) <= cloudThreshold)
-    : scenes;
-
-  useEffect(() => {
-    // Fetch available scenes
-    const fetchScenes = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const data = await api.listScenes(effectiveEntityId || undefined);
-        setScenes(data.scenes || []);
-        
-        // Auto-select most recent scene if none selected
-        if (!selectedDate && data.scenes && data.scenes.length > 0) {
-          const mostRecent = data.scenes[0];
-          setSelectedDate(mostRecent.sensing_date);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load scenes');
-        console.error('Error fetching scenes:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchScenes();
-  }, [effectiveEntityId, api]);
-
-  // Sync with viewer's currentDate
-  useEffect(() => {
-    if (currentDate && selectedDate) {
-      // Convert currentDate to string for comparison
-      const currentDateStr = currentDate.toISOString().split('T')[0];
-      if (currentDateStr !== selectedDate) {
-        // If viewer has a different date, try to find matching scene
-        const matchingScene = scenes.find(s => s.sensing_date === currentDateStr);
-        if (matchingScene) {
-          setSelectedDate(currentDateStr);
-          setSelectedSceneId(matchingScene.id);
-        }
-      }
+    } catch (err) {
+      console.error('[TimelineWidget] Error fetching stats:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load timeline data');
+    } finally {
+      setLoading(false);
     }
-  }, [currentDate, selectedDate, scenes, setSelectedDate, setSelectedSceneId]);
+  }, [effectiveEntityId, selectedIndex, api, selectedDate, setSelectedDate, setSelectedSceneId]);
 
-  // Sync viewer's currentDate when selectedDate changes
-  useEffect(() => {
-    if (selectedDate && setCurrentDate) {
-      // Convert selectedDate string to Date for comparison
-      const selectedDateObj = new Date(selectedDate);
-      if (selectedDateObj.getTime() !== currentDate.getTime()) {
-        setCurrentDate(selectedDateObj);
-      }
+  // Load comparison data when enabled
+  const loadComparison = useCallback(async () => {
+    if (!effectiveEntityId || !showComparison) return;
+
+    try {
+      const response = await api.compareYears(effectiveEntityId, selectedIndex);
+      // Convert previous year stats to SceneStats format
+      const prevYearSceneStats: SceneStats[] = response.previous_year.stats.map(s => ({
+        scene_id: '',
+        sensing_date: s.sensing_date,
+        mean_value: s.mean_value,
+        min_value: null,
+        max_value: null,
+        std_dev: null,
+        cloud_coverage: null,
+      }));
+      setPreviousYearStats(prevYearSceneStats);
+    } catch (err) {
+      console.error('[TimelineWidget] Error fetching comparison:', err);
     }
-  }, [selectedDate, currentDate, setCurrentDate]);
+  }, [effectiveEntityId, showComparison, selectedIndex, api]);
 
-  const handleSceneClick = (scene: VegetationScene) => {
-    setSelectedDate(scene.sensing_date);
-    setSelectedSceneId(scene.id);
+  // Initial load
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  // Load comparison when toggled
+  useEffect(() => {
+    if (showComparison) {
+      loadComparison();
+    }
+  }, [showComparison, loadComparison]);
+
+  // Handle date selection from chart
+  const handleDateSelect = useCallback((date: string, sceneId: string) => {
+    setSelectedDate(date);
+    setSelectedSceneId(sceneId);
+    
     // Update viewer's currentDate
     if (setCurrentDate) {
-      setCurrentDate(new Date(scene.sensing_date));
+      setCurrentDate(new Date(date));
     }
-  };
+  }, [setSelectedDate, setSelectedSceneId, setCurrentDate]);
 
-  if (loading) {
+  // Sync with viewer's currentDate changes
+  useEffect(() => {
+    if (currentDate && stats.length > 0) {
+      const currentDateStr = currentDate.toISOString().split('T')[0];
+      // Find closest scene to currentDate
+      const closestScene = stats.find(s => s.sensing_date === currentDateStr);
+      if (closestScene && closestScene.sensing_date !== selectedDate) {
+        setSelectedDate(closestScene.sensing_date);
+        setSelectedSceneId(closestScene.scene_id);
+      }
+    }
+  }, [currentDate, stats, selectedDate, setSelectedDate, setSelectedSceneId]);
+
+  if (!effectiveEntityId) {
     return (
-      <Card padding="md">
-        <div className="flex items-center justify-center gap-2 py-4">
-          <Loader2 className="w-5 h-5 text-gray-500 animate-spin" />
-          <p className="text-gray-500">Loading available scenes...</p>
+      <Card padding="md" className="bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-xl">
+        <div className="flex items-center justify-center gap-2 py-6 text-slate-500">
+          <Calendar className="w-5 h-5" />
+          <p>Selecciona una parcela para ver el historial</p>
         </div>
       </Card>
     );
@@ -133,128 +135,68 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
 
   if (error) {
     return (
-      <Card padding="md">
+      <Card padding="md" className="bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-xl">
         <div className="text-center text-red-600 py-4">
           <p>{error}</p>
-        </div>
-      </Card>
-    );
-  }
-
-  if (scenes.length === 0) {
-    return (
-      <Card padding="md">
-        <div className="text-center text-gray-500 py-4">
-          <p>No scenes available. Create a download job to fetch Sentinel-2 data.</p>
+          <button 
+            onClick={loadStats}
+            className="mt-2 text-sm text-blue-600 hover:underline"
+          >
+            Reintentar
+          </button>
         </div>
       </Card>
     );
   }
 
   return (
-    <Card padding="md" className="bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-xl">
-      <div className="flex items-center justify-between mb-4">
+    <div className="space-y-2">
+      {/* Controls bar */}
+      <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-green-600" />
-          <h3 className="text-lg font-semibold text-slate-800">
-            Escenas Disponibles
-          </h3>
-          <span className="text-sm text-slate-500">
-            ({filteredScenes.length} de {scenes.length} escenas)
-          </span>
+          <button
+            onClick={() => setShowChart(!showChart)}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors ${
+              showChart 
+                ? 'bg-slate-800 text-white' 
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            Gráfica
+          </button>
+          
+          <button
+            onClick={() => setShowComparison(!showComparison)}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors ${
+              showComparison 
+                ? 'bg-amber-500 text-white' 
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {showComparison ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+            Año anterior
+          </button>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={filterClouds}
-              onChange={(e) => setFilterClouds(e.target.checked)}
-              className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-            />
-            <Filter className="w-3 h-3" />
-            <span>Filtrar nubes (&lt;{cloudThreshold}%)</span>
-          </label>
+        
+        <div className="text-xs text-slate-500">
+          {stats.length} escenas disponibles
         </div>
       </div>
 
-      {/* Horizontal Timeline */}
-      <div className="overflow-x-auto pb-2">
-        <div className="flex gap-2 min-w-max">
-          {filteredScenes.map((scene) => {
-            const isSelected = selectedDate === scene.sensing_date;
-            const date = new Date(scene.sensing_date);
-            const day = date.getDate();
-            const month = date.toLocaleDateString('en-US', { month: 'short' });
-            const year = date.getFullYear();
-
-            return (
-              <button
-                key={scene.id}
-                onClick={() => handleSceneClick(scene)}
-                className={`
-                  flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all
-                  min-w-[80px] hover:shadow-md
-                  ${
-                    isSelected
-                      ? 'border-green-500 bg-green-50 shadow-md'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }
-                `}
-                title={`${scene.sensing_date} - Cloud: ${scene.cloud_coverage?.toFixed(1) || 'N/A'}%`}
-              >
-                {/* Date Display */}
-                <div className={`text-xs font-semibold ${isSelected ? 'text-green-700' : 'text-gray-600'}`}>
-                  {day}
-                </div>
-                <div className={`text-xs ${isSelected ? 'text-green-600' : 'text-gray-500'}`}>
-                  {month}
-                </div>
-                <div className={`text-xs ${isSelected ? 'text-green-600' : 'text-gray-400'}`}>
-                  {year}
-                </div>
-
-                {/* Cloud Coverage Indicator */}
-                <div className="mt-1">
-                  <CloudCoverIndicator
-                    cloudCoverage={scene.cloud_coverage}
-                    threshold={cloudThreshold}
-                    size="sm"
-                    showWarning={true}
-                  />
-                </div>
-
-                {/* Selection Indicator */}
-                {isSelected && (
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-1" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Selected Scene Info */}
-      {selectedDate && (
-        <div className="mt-4 pt-4 border-t border-slate-200">
-          <div className="flex items-center justify-between text-sm">
-            <div>
-              <span className="text-slate-500">Seleccionada: </span>
-              <span className="font-semibold text-slate-800">
-                {new Date(selectedDate).toLocaleDateString('es-ES', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500">Índice:</span>
-              <span className="font-semibold text-green-600">{selectedIndex}</span>
-            </div>
-          </div>
-        </div>
+      {/* Smart Timeline with chart */}
+      {showChart && (
+        <SmartTimeline
+          stats={stats}
+          selectedDate={selectedDate}
+          onDateSelect={handleDateSelect}
+          indexType={selectedIndex}
+          previousYearStats={showComparison ? previousYearStats : undefined}
+          showComparison={showComparison}
+          isLoading={loading}
+        />
       )}
-    </Card>
+    </div>
   );
 };
 

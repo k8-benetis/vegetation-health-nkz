@@ -296,3 +296,4 @@ const parcelId = selectedEntityType === 'AgriParcel' ? selectedEntityId : null;
 
 
 
+

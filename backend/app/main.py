@@ -1107,3 +1107,167 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
+
+
+# =============================================================================
+# Smart Timeline API - Historical Stats for Charts
+# =============================================================================
+
+class SceneStats(BaseModel):
+    """Scene statistics for timeline chart."""
+    scene_id: str
+    sensing_date: str
+    mean_value: Optional[float] = None
+    min_value: Optional[float] = None
+    max_value: Optional[float] = None
+    std_dev: Optional[float] = None
+    cloud_coverage: Optional[float] = None
+
+class TimelineStatsResponse(BaseModel):
+    """Response for timeline stats endpoint."""
+    entity_id: str
+    index_type: str
+    stats: List[SceneStats]
+    period_start: str
+    period_end: str
+
+
+@app.get("/scenes/{entity_id}/stats", response_model=TimelineStatsResponse)
+async def get_scene_stats(
+    entity_id: str,
+    index_type: str = "NDVI",
+    months: int = 12,
+    current_user: dict = Depends(require_auth),
+    db: Session = Depends(get_db_for_tenant)
+):
+    """Get historical statistics for timeline chart.
+    
+    Returns mean index values per scene for the specified period.
+    Used by Smart Timeline to render the line chart.
+    
+    Args:
+        entity_id: Entity ID (AgriParcel URN)
+        index_type: Index type (NDVI, NDMI, SAVI, etc.)
+        months: Number of months to include (default: 12)
+    
+    Returns:
+        TimelineStatsResponse with stats per scene
+    """
+    from datetime import timedelta
+    from sqlalchemy import and_, desc
+    
+    # Calculate date range
+    end_date = datetime.utcnow().date()
+    start_date = end_date - timedelta(days=months * 30)
+    
+    # Query scenes with their index stats
+    results = db.query(
+        VegetationScene,
+        VegetationIndexCache
+    ).outerjoin(
+        VegetationIndexCache,
+        and_(
+            VegetationIndexCache.scene_id == VegetationScene.id,
+            VegetationIndexCache.entity_id == entity_id,
+            VegetationIndexCache.index_type == index_type,
+            VegetationIndexCache.tenant_id == current_user['tenant_id']
+        )
+    ).filter(
+        VegetationScene.tenant_id == current_user['tenant_id'],
+        VegetationScene.sensing_date >= start_date,
+        VegetationScene.sensing_date <= end_date,
+        VegetationScene.is_valid == True
+    ).order_by(
+        desc(VegetationScene.sensing_date)
+    ).all()
+    
+    stats = []
+    for scene, cache in results:
+        cloud_cov = None
+        if scene.cloud_coverage:
+            try:
+                cloud_cov = float(scene.cloud_coverage)
+            except:
+                pass
+        
+        stats.append(SceneStats(
+            scene_id=str(scene.id),
+            sensing_date=scene.sensing_date.isoformat(),
+            mean_value=float(cache.mean_value) if cache and cache.mean_value else None,
+            min_value=float(cache.min_value) if cache and cache.min_value else None,
+            max_value=float(cache.max_value) if cache and cache.max_value else None,
+            std_dev=float(cache.std_dev) if cache and cache.std_dev else None,
+            cloud_coverage=cloud_cov
+        ))
+    
+    return TimelineStatsResponse(
+        entity_id=entity_id,
+        index_type=index_type,
+        stats=stats,
+        period_start=start_date.isoformat(),
+        period_end=end_date.isoformat()
+    )
+
+
+@app.get("/scenes/{entity_id}/compare-years", response_model=Dict[str, Any])
+async def compare_years(
+    entity_id: str,
+    index_type: str = "NDVI",
+    current_user: dict = Depends(require_auth),
+    db: Session = Depends(get_db_for_tenant)
+):
+    """Compare current year vs previous year.
+    
+    Returns two series of stats for overlay comparison in the timeline.
+    """
+    from datetime import timedelta
+    from sqlalchemy import and_, desc, extract
+    
+    current_year = datetime.utcnow().year
+    
+    def get_year_stats(year: int):
+        start_date = date(year, 1, 1)
+        end_date = date(year, 12, 31)
+        
+        results = db.query(
+            VegetationScene,
+            VegetationIndexCache
+        ).outerjoin(
+            VegetationIndexCache,
+            and_(
+                VegetationIndexCache.scene_id == VegetationScene.id,
+                VegetationIndexCache.entity_id == entity_id,
+                VegetationIndexCache.index_type == index_type,
+                VegetationIndexCache.tenant_id == current_user['tenant_id']
+            )
+        ).filter(
+            VegetationScene.tenant_id == current_user['tenant_id'],
+            VegetationScene.sensing_date >= start_date,
+            VegetationScene.sensing_date <= end_date,
+            VegetationScene.is_valid == True
+        ).order_by(
+            VegetationScene.sensing_date
+        ).all()
+        
+        return [
+            {
+                "month": scene.sensing_date.month,
+                "day": scene.sensing_date.day,
+                "mean_value": float(cache.mean_value) if cache and cache.mean_value else None,
+                "sensing_date": scene.sensing_date.isoformat()
+            }
+            for scene, cache in results
+        ]
+    
+    return {
+        "entity_id": entity_id,
+        "index_type": index_type,
+        "current_year": {
+            "year": current_year,
+            "stats": get_year_stats(current_year)
+        },
+        "previous_year": {
+            "year": current_year - 1,
+            "stats": get_year_stats(current_year - 1)
+        }
+    }

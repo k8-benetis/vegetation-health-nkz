@@ -193,6 +193,37 @@ export class VegetationApiClient {
     };
   }
 
+  /**
+   * Get scene statistics for timeline chart.
+   * Returns mean index values per scene for the specified period.
+   */
+  async getSceneStats(
+    entityId: string,
+    indexType: string = "NDVI",
+    months: number = 12
+  ): Promise<TimelineStatsResponse> {
+    const params = new URLSearchParams();
+    params.append("index_type", indexType);
+    params.append("months", months.toString());
+    
+    const response = await this.client.get(`/scenes/${encodeURIComponent(entityId)}/stats?${params.toString()}`);
+    return response as TimelineStatsResponse;
+  }
+
+  /**
+   * Compare current year vs previous year stats.
+   */
+  async compareYears(
+    entityId: string,
+    indexType: string = "NDVI"
+  ): Promise<YearComparisonResponse> {
+    const params = new URLSearchParams();
+    params.append("index_type", indexType);
+    
+    const response = await this.client.get(`/scenes/${encodeURIComponent(entityId)}/compare-years?${params.toString()}`);
+    return response as YearComparisonResponse;
+  }
+
   async getConfig(): Promise<VegetationConfig> {
     const response = await this.client.get('/config');
     return response as VegetationConfig;
@@ -285,3 +316,52 @@ export function useVegetationApi(): VegetationApiClient {
     []
   );
 }
+
+// ============================================================================
+// Smart Timeline Stats API
+// ============================================================================
+
+export interface SceneStats {
+  scene_id: string;
+  sensing_date: string;
+  mean_value: number | null;
+  min_value: number | null;
+  max_value: number | null;
+  std_dev: number | null;
+  cloud_coverage: number | null;
+}
+
+export interface TimelineStatsResponse {
+  entity_id: string;
+  index_type: string;
+  stats: SceneStats[];
+  period_start: string;
+  period_end: string;
+}
+
+export interface YearComparisonResponse {
+  entity_id: string;
+  index_type: string;
+  current_year: {
+    year: number;
+    stats: Array<{
+      month: number;
+      day: number;
+      mean_value: number | null;
+      sensing_date: string;
+    }>;
+  };
+  previous_year: {
+    year: number;
+    stats: Array<{
+      month: number;
+      day: number;
+      mean_value: number | null;
+      sensing_date: string;
+    }>;
+  };
+}
+
+// Add these methods to VegetationApiClient class - copy into class manually if needed
+// async getSceneStats(entityId: string, indexType: string = 'NDVI', months: number = 12): Promise<TimelineStatsResponse>
+// async compareYears(entityId: string, indexType: string = 'NDVI'): Promise<YearComparisonResponse>
