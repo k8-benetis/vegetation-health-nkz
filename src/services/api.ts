@@ -229,6 +229,27 @@ export class VegetationApiClient {
     return response as VegetationConfig;
   }
 
+  async getRecentJobs(limit: number = 5): Promise<VegetationJob[]> {
+    return [
+      {
+        id: "job-123",
+        type: "SENTINEL_INGEST",
+        status: "completed",
+        progress_percentage: 100,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: "job-124",
+        type: "ZONING",
+        status: "pending",
+        progress_percentage: 45,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ];
+  }
+
   async updateConfig(config: Partial<VegetationConfig>): Promise<{ message: string; config: VegetationConfig }> {
     const response = await this.client.post('/config', config);
     return response as { message: string; config: VegetationConfig };
