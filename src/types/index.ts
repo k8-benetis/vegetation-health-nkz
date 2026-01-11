@@ -108,3 +108,44 @@ export interface TimelineWidgetProps {
   onDateSelect?: (date: string) => void;
 }
 
+
+export interface SceneStats {
+  scene_id: string;
+  sensing_date: string;
+  mean_value: number | null;
+  min_value: number | null;
+  max_value: number | null;
+  std_dev: number | null;
+  cloud_coverage: number | null;
+}
+
+export interface TimelineStatsResponse {
+  entity_id: string;
+  index_type: string;
+  stats: SceneStats[];
+  period_start: string;
+  period_end: string;
+}
+
+export interface YearComparisonResponse {
+  entity_id: string;
+  index_type: string;
+  current_year: {
+    year: number;
+    stats: Array<{
+      month: number;
+      day: number;
+      mean_value: number | null;
+      sensing_date: string;
+    }>;
+  };
+  previous_year: {
+    year: number;
+    stats: Array<{
+      month: number;
+      day: number;
+      mean_value: number | null;
+      sensing_date: string;
+    }>;
+  };
+}
