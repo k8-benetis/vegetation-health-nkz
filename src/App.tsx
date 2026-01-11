@@ -11,7 +11,7 @@ import React, { useState } from 'react';
 import { Settings, BarChart3, Info } from 'lucide-react';
 import { VegetationProvider } from './services/vegetationContext';
 import { VegetationConfig } from './components/VegetationConfig';
-import { VegetationAnalytics } from './components/VegetationAnalytics';
+import { VegetationConfig } from './components/VegetationConfig';
 import './index.css';
 
 // Slot components (exported for host integration)
@@ -84,7 +84,7 @@ const VegetationPrimeApp: React.FC = () => {
             />
           )}
           {activeTab === 'analytics' && (
-            <VegetationAnalytics 
+            <VegetationConfig 
                
               mode="page" 
             />
