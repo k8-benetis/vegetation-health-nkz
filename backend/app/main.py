@@ -1279,7 +1279,7 @@ async def compare_years(
 # from app.jobs.zoning_algorithm import ZoningAlgorithm
 
 @app.post("/api/jobs/zoning/{parcel_id}")
-async def trigger_zoning(parcel_id: str, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
+async def trigger_zoning(parcel_id: str, background_tasks: BackgroundTasks, user: dict = Depends(require_auth)):
     """
     Trigger VRA Management Zone clustering for a parcel.
     """
@@ -1299,7 +1299,7 @@ async def trigger_zoning(parcel_id: str, background_tasks: BackgroundTasks, user
     return {"message": "Zoning job started", "task_id": task_id}
 
 @app.get("/api/jobs/zoning/{parcel_id}/geojson")
-async def get_zoning_geojson(parcel_id: str, user: dict = Depends(get_current_user)):
+async def get_zoning_geojson(parcel_id: str, user: dict = Depends(require_auth)):
     """
     Get the Management Zones for a parcel as GeoJSON.
     """
