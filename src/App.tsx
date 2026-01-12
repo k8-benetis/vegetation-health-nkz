@@ -9,7 +9,7 @@ import { TimelineWidget } from './components/slots/TimelineWidget';
  * This is used for local development only and is NOT the entry point for the module in production.
  */
 function App() {
-  const [showConfig, setShowConfig] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState('health');
 
   return (
     <VegetationProvider>
@@ -23,7 +23,10 @@ function App() {
           </div>
           
           <div className="p-4">
-             <ModeSelector mode="panel" />
+             <ModeSelector 
+               currentIndex={currentIndex} 
+               onChange={(val) => setCurrentIndex(val)} 
+             />
           </div>
 
           <div className="flex-1 overflow-y-auto">
