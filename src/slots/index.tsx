@@ -89,3 +89,4 @@ export const vegetationPrimeSlots: ModuleViewerSlots = {
  * Export as viewerSlots for host integration
  */
 export const viewerSlots = vegetationPrimeSlots;
+export default vegetationPrimeSlots;
