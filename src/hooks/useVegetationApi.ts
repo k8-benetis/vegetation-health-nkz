@@ -68,15 +68,31 @@ export function useVegetationApi() {
   }, [token]);
 
   const listParcels = useCallback(async (): Promise<EntityDetails[]> => {
-    if (!token) return [];
+    if (!token) {
+        console.warn('[API] Skipping listParcels because token is missing');
+        return [];
+    }
     try {
-      const res = await fetch(`/api/entities?type=AgriParcel&limit=100`, {
+      const url = `/api/entities?type=AgriParcel&limit=100`;
+      console.log('[API] Requesting Parcels:', url);
+      
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (!res.ok) return [];
-      return await res.json();
+      
+      console.log('[API] Response Status:', res.status);
+      
+      if (!res.ok) {
+        console.error('[API] Failed to list parcels:', res.statusText);
+        return [];
+      }
+      
+      const data = await res.json();
+      console.log('[API] Response Data (First 3):', Array.isArray(data) ? data.slice(0,3) : data);
+      
+      return data;
     } catch (e) {
-      console.error("Error listing parcels:", e);
+      console.error("[API] Error listing parcels:", e);
       return [];
     }
   }, [token]);

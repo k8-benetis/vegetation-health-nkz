@@ -30,7 +30,7 @@ export const VegetationConfig: React.FC<VegetationConfigProps> = ({ mode = 'pane
     return (
       <div className="flex flex-col gap-4 p-4 h-full overflow-y-auto">
         <section>
-          <div className="bg-yellow-100 p-2 text-xs mb-2 rounded text-yellow-800 border border-yellow-300">🔧 Debug: Window.Auth = {window.__nekazariAuthContext ? "YES" : "NO"}</div><h3 className="text-sm font-semibold text-slate-700 mb-2">Modo de Análisis</h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-2">Modo de Análisis</h3>
           <ModeSelector 
             currentIndex={selectedIndex || 'NDVI'} 
             onChange={handleModeChange} 
