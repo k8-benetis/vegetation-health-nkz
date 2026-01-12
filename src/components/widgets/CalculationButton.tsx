@@ -49,6 +49,7 @@ export const CalculationButton: React.FC<CalculationButtonProps> = ({
   };
 
   return (
+      <div className="bg-red-600 text-white text-xs font-bold p-1 text-center rounded animate-pulse">DIAGNÓSTICO v1.35 ACTIVADO</div>
     <div className="flex flex-col gap-2">
       <button
         onClick={handleClick}
