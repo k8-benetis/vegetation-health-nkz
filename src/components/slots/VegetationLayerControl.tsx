@@ -9,7 +9,7 @@ import { useViewer } from '@nekazari/sdk';
 import { useVegetationContext } from '../../services/vegetationContext';
 import { useVegetationScenes } from '../../hooks/useVegetationScenes';
 import { VegetationIndexType } from '../../types';
-import { IndexPillSelector } from '../widgets/IndexPillSelector'; // Corrected import
+import { IndexPillSelector } from '../widgets/IndexPillSelector'; 
 import { ColorScaleLegend } from '../widgets/ColorScaleLegend';
 import DateSelector from '../widgets/DateSelector';
 
@@ -47,14 +47,17 @@ const VegetationLayerControl: React.FC = () => {
 
   // Effect to sync viewer date
   useEffect(() => {
+    // selectedDate is Date | null in context
     if (selectedDate && setCurrentDate) {
-      setCurrentDate(new Date(selectedDate));
+      // setCurrentDate expects Date
+      setCurrentDate(selectedDate);
     }
   }, [selectedDate, setCurrentDate]);
 
-  // Handle date change
-  const handleDateChange = (date: string, sceneId: string) => {
-    setSelectedDate(date);
+  // Handle date change from DateSelector (returns string)
+  const handleDateChange = (dateStr: string, sceneId: string) => {
+    // setSelectedDate expects Date | null
+    setSelectedDate(new Date(dateStr));
     setSelectedSceneId(sceneId);
   };
 
@@ -68,6 +71,9 @@ const VegetationLayerControl: React.FC = () => {
       </Card>
     );
   }
+
+  // Convert Date to string for DateSelector prop
+  const selectedDateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : '';
 
   return (
     <>
@@ -91,8 +97,7 @@ const VegetationLayerControl: React.FC = () => {
             <label className="text-xs font-medium text-slate-600 uppercase tracking-wider">Índice Espectral</label>
             <IndexPillSelector 
               selectedIndex={(selectedIndex || 'NDVI') as VegetationIndexType} 
-              onIndexChange={(idx: any) => setSelectedIndex(idx)} // Correct prop name
-              // variant="compact" // Variant might not exist in IndexPillSelectorProps, removing for safety
+              onIndexChange={(idx: any) => setSelectedIndex(idx)} 
             />
           </div>
 
@@ -103,7 +108,7 @@ const VegetationLayerControl: React.FC = () => {
               {scenesLoading && <span className="text-slate-400">Cargando...</span>}
             </label>
             <DateSelector 
-              selectedDate={selectedDate || ''}
+              selectedDate={selectedDateStr} // Passing string
               scenes={scenes}
               onSelect={handleDateChange}
             />

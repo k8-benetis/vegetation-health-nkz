@@ -38,6 +38,12 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
 
   const effectiveEntityId = entityId || selectedEntityId;
 
+  // Helper to format Date to YYYY-MM-DD string
+  const formatDateStr = (d: Date | null): string | undefined => {
+    if (!d) return undefined;
+    return d.toISOString().split('T')[0];
+  };
+
   // Load stats for the timeline chart
   const loadStats = useCallback(async () => {
     if (!effectiveEntityId) return;
@@ -46,15 +52,13 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
     setError(null);
 
     try {
-      // Load current period stats
-      // FIX: Ensure selectedIndex is not null using default
       const response = await api.getSceneStats(effectiveEntityId, selectedIndex || 'NDVI', 12);
       setStats(response.stats);
 
       // Auto-select most recent scene if none selected
       if (!selectedDate && response.stats.length > 0) {
-        const mostRecent = response.stats[0]; // Already sorted desc
-        setSelectedDate(mostRecent.sensing_date);
+        const mostRecent = response.stats[0]; 
+        setSelectedDate(new Date(mostRecent.sensing_date)); // Fix: Convert string to Date
         setSelectedSceneId(mostRecent.scene_id);
       }
     } catch (err) {
@@ -70,9 +74,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
     if (!effectiveEntityId || !showComparison) return;
 
     try {
-      // FIX: Ensure selectedIndex is not null
       const response = await api.compareYears(effectiveEntityId, selectedIndex || 'NDVI');
-      // Convert previous year stats to SceneStats format
       const prevYearSceneStats: SceneStats[] = response.previous_year.stats.map(s => ({
         scene_id: '',
         sensing_date: s.sensing_date,
@@ -101,13 +103,13 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
   }, [showComparison, loadComparison]);
 
   // Handle date selection from chart
-  const handleDateSelect = useCallback((date: string, sceneId: string) => {
-    setSelectedDate(date);
+  const handleDateSelect = useCallback((dateStr: string, sceneId: string) => {
+    setSelectedDate(new Date(dateStr)); // Fix: Convert string to Date
     setSelectedSceneId(sceneId);
     
     // Update viewer's currentDate
     if (setCurrentDate) {
-      setCurrentDate(new Date(date));
+      setCurrentDate(new Date(dateStr));
     }
   }, [setSelectedDate, setSelectedSceneId, setCurrentDate]);
 
@@ -117,8 +119,11 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
       const currentDateStr = currentDate.toISOString().split('T')[0];
       // Find closest scene to currentDate
       const closestScene = stats.find(s => s.sensing_date === currentDateStr);
-      if (closestScene && closestScene.sensing_date !== selectedDate) {
-        setSelectedDate(closestScene.sensing_date);
+      // Fix comparison: Convert selectedDate (Date) to string
+      const selectedDateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : null;
+      
+      if (closestScene && closestScene.sensing_date !== selectedDateStr) {
+        setSelectedDate(new Date(closestScene.sensing_date)); // Fix: Convert string to Date
         setSelectedSceneId(closestScene.scene_id);
       }
     }
@@ -153,7 +158,6 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
 
   return (
     <div className="space-y-2">
-      {/* Controls bar */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <button
@@ -186,11 +190,10 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
         </div>
       </div>
 
-      {/* Smart Timeline with chart */}
       {showChart && (
         <SmartTimeline
           stats={stats}
-          selectedDate={selectedDate}
+          selectedDate={selectedDate ? selectedDate.toISOString().split('T')[0] : undefined} // Fix: Pass string
           onDateSelect={handleDateSelect}
           indexType={selectedIndex || 'NDVI'} 
           previousYearStats={showComparison ? previousYearStats : undefined}

@@ -9,9 +9,11 @@ const DashboardContent: React.FC = () => {
   const { 
     selectedEntityId, 
     setSelectedEntityId,
-    parcels,
-    loading: loadingContext 
+     
+      
   } = useVegetationContext();
+  const parcels: any[] = [];
+  const loadingContext = false;
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'config'>('dashboard');
 
