@@ -69,7 +69,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
     if (!effectiveEntityId || !showComparison) return;
 
     try {
-      const response = await api.compareYears(effectiveEntityId, selectedIndex);
+      const response = await api.compareYears(effectiveEntityId, selectedIndex || 'NDVI');
       // Convert previous year stats to SceneStats format
       const prevYearSceneStats: SceneStats[] = response.previous_year.stats.map(s => ({
         scene_id: '',
@@ -190,7 +190,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
           stats={stats}
           selectedDate={selectedDate}
           onDateSelect={handleDateSelect}
-          indexType={selectedIndex}
+          indexType={selectedIndex || 'NDVI'}
           previousYearStats={showComparison ? previousYearStats : undefined}
           showComparison={showComparison}
           isLoading={loading}

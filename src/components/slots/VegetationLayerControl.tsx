@@ -370,7 +370,7 @@ export const VegetationLayerControl: React.FC<VegetationLayerControlProps> = ({
       {/* Color Scale Legend - Floating */}
       {showLegend && (
         <ColorScaleLegend
-          indexType={selectedIndex}
+          indexType={selectedIndex || 'NDVI'}
           position="top-right"
           onClose={() => setShowLegend(false)}
           dynamic={legendDynamic}

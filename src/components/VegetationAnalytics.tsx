@@ -113,7 +113,7 @@ export const VegetationAnalytics: React.FC = () => {
                 </div>
                 <div className="h-64 bg-slate-50 rounded-lg flex items-center justify-center">
                     {/* Placeholder for real component */}
-                    <TimeseriesChart series={[]} indexType={selectedIndex} />
+                    <TimeseriesChart series={[]} indexType={selectedIndex || 'NDVI'} />
                 </div>
             </Card>
 
@@ -125,7 +125,7 @@ export const VegetationAnalytics: React.FC = () => {
                        <p className="text-xs text-slate-500">Pixel frequency for current view</p>
                     </div>
                      <div className="h-48 bg-slate-50 rounded-lg">
-                        <DistributionHistogram values={[]} indexType={selectedIndex} />
+                        <DistributionHistogram values={[]} indexType={selectedIndex || 'NDVI'} />
                      </div>
                 </Card>
 

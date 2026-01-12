@@ -419,7 +419,7 @@ export const AnalyticsPage: React.FC = () => {
               ) : histogramData.length > 0 ? (
                 <DistributionHistogram
                   values={histogramData}
-                  indexType={selectedIndex}
+                  indexType={selectedIndex || 'NDVI'}
                   height={250}
                 />
               ) : (
@@ -528,7 +528,7 @@ export const AnalyticsPage: React.FC = () => {
               ) : (
                 <TimeseriesChart
                   series={timeseriesData}
-                  indexType={selectedIndex}
+                  indexType={selectedIndex || 'NDVI'}
                   height={400}
                 />
               )}
