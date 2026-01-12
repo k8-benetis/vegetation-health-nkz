@@ -1,6 +1,5 @@
 /**
- * Hook for managing vegetation index calculations.
- * Shared between Quick Mode (Viewer) and Advanced Mode (Analytics).
+ * Hook for managing vegetation index calculations with Polling.
  */
 
 import { useState, useCallback } from 'react';
@@ -45,12 +44,11 @@ export function useIndexCalculation() {
         endDate: options?.endDate,
       };
 
-      // Validate required fields: must have either sceneId OR (startDate AND endDate)
       if (!calculationOptions.sceneId && (!calculationOptions.startDate || !calculationOptions.endDate)) {
         setState({
           isCalculating: false,
           jobId: null,
-          error: 'Please select a scene OR provide a date range for composite calculation.',
+          error: 'Please select a scene OR provide a date range used.',
           success: false,
         });
         return null;
@@ -73,14 +71,43 @@ export function useIndexCalculation() {
           end_date: calculationOptions.endDate,
         });
 
+        // POLL FOR COMPLETION
+        const jobId = result.job_id;
+        let attempts = 0;
+        const maxAttempts = 30; // 30s timeout
+
+        while (attempts < maxAttempts) {
+           await new Promise(r => setTimeout(r, 1000));
+           try {
+             const jobDetails = await api.getJobDetails(jobId);
+             const status = jobDetails.job.status;
+             
+             if (status === 'completed') {
+                 // Success!
+                 break;
+             } else if (status === 'failed') {
+                 throw new Error(jobDetails.job.error_message || 'Job failed on backend');
+             }
+             // If pending/processing, continue
+           } catch (pollError: any) {
+             console.warn('Poll error:', pollError);
+             // Verify if it's 404 (maybe job not ready yet) or real error
+           }
+           attempts++;
+        }
+
+        if (attempts >= maxAttempts) {
+            throw new Error('Calculation timed out (Backend slow)');
+        }
+
         setState({
           isCalculating: false,
-          jobId: result.job_id,
+          jobId: jobId,
           error: null,
           success: true,
         });
 
-        return result.job_id;
+        return jobId;
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to calculate index';
         setState({
@@ -110,5 +137,3 @@ export function useIndexCalculation() {
     ...state,
   };
 }
-
-

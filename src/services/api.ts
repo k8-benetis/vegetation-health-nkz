@@ -218,32 +218,9 @@ export class VegetationApiClient {
   }
 
   async getRecentJobs(limit: number = 5): Promise<VegetationJob[]> {
-    // Mock data compliant with VegetationJob interface
-    const jobs: VegetationJob[] = [
-      {
-        id: 'job-123',
-        tenant_id: 'default',
-        job_type: 'SENTINEL_INGEST',
-        status: 'completed',
-        progress_percentage: 100,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      },
-      {
-        id: 'job-124',
-        tenant_id: 'default',
-        job_type: 'ZONING',
-        status: 'pending',
-        progress_percentage: 45,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-    ];
-    
-    return jobs.slice(0, limit);
+    const response = await this.client.get(`/jobs?limit=${limit}`);
+    return response as unknown as VegetationJob[];
   }
-
-  // --- Missing Methods Implementation ---
 
   async listJobs(status?: string, limit: number = 50, offset: number = 0): Promise<{ jobs: VegetationJob[]; total: number }> {
     const searchParams = new URLSearchParams();
@@ -251,11 +228,8 @@ export class VegetationApiClient {
     searchParams.append("limit", limit.toString());
     searchParams.append("offset", offset.toString());
     
-    const allJobs = await this.getRecentJobs(limit + offset);
-    return {
-       jobs: allJobs,
-       total: allJobs.length
-    };
+    const response = await this.client.get(`/jobs?${searchParams.toString()}`);
+    return response as unknown as { jobs: VegetationJob[]; total: number };
   }
 
   async getJobDetails(jobId: string): Promise<{ 
@@ -264,24 +238,13 @@ export class VegetationApiClient {
     timeseries?: any[];
     scene_info?: any;
   }> {
-     return {
-        job: {
-            id: jobId,
-            tenant_id: "default",
-            job_type: "SENTINEL_INGEST",
-            status: "completed",
-            progress_percentage: 100,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        },
-        index_stats: {
-           mean: 0.5,
-           min: 0.1,
-           max: 0.9,
-           std_dev: 0.2,
-           pixel_count: 10000
-        }
-     };
+      const response = await this.client.get(`/jobs/${jobId}`);
+      return response as unknown as { 
+        job: VegetationJob; 
+        index_stats?: { mean: number; min: number; max: number; std_dev: number; pixel_count: number; };
+        timeseries?: any[];
+        scene_info?: any;
+      };
   }
 }
 
