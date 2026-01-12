@@ -58,7 +58,7 @@ export function VegetationProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     api.listParcels().then(data => {
       if (active) {
-        setParcels(data || []);
+        setParcels(Array.isArray(data) ? data : []);
         setLoading(false);
       }
     });

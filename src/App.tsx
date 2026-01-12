@@ -54,7 +54,7 @@ const DashboardContent: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {parcels.map((parcel: any) => (
+                    {Array.isArray(parcels) && parcels.map((parcel: any) => (
                       <tr 
                         key={parcel.id} 
                         className="hover:bg-slate-50 transition-colors cursor-pointer"
