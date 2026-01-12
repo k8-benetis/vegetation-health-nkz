@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useVegetationContext } from '../services/vegetationContext';
 import { useVegetationConfig } from '../hooks/useVegetationConfig';
 import { ModeSelector } from './widgets/ModeSelector';
@@ -13,16 +13,17 @@ export const VegetationConfig: React.FC<VegetationConfigProps> = ({ mode = 'pane
   const { 
     selectedEntityId, 
     selectedIndex, 
-    setSelectedIndex,
-    dateRange,
-    setDateRange
+    setSelectedIndex
   } = useVegetationContext();
   
-  const { config, updateConfig } = useVegetationConfig();
+  // Hook returns { config, loading, error, saveConfig, ... }
+  // NOT updateConfig
+  const { config, saveConfig } = useVegetationConfig();
   const [showCarbonConfig, setShowCarbonConfig] = useState(false);
 
   const handleModeChange = (indexType: string) => {
-    setSelectedIndex(indexType);
+    // Ensure casting if strict types are enforced, though string usually works due to union
+    setSelectedIndex(indexType as any); 
   };
 
   if (mode === 'panel') {
@@ -55,8 +56,9 @@ export const VegetationConfig: React.FC<VegetationConfigProps> = ({ mode = 'pane
           
           {showCarbonConfig && (
             <CarbonInputsWidget 
-              entityId={selectedEntityId} 
+              entityId={selectedEntityId || undefined} 
               compact={true}
+              onSave={(cfg) => saveConfig({ ...config, ...cfg } as any)}
             />
           )}
         </section>
@@ -80,8 +82,8 @@ export const VegetationConfig: React.FC<VegetationConfigProps> = ({ mode = 'pane
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
           <h2 className="text-lg font-semibold mb-4">Cálculo de Carbono (LUE)</h2>
           <CarbonInputsWidget 
-            entityId={selectedEntityId}
-            onSave={(cfg) => console.log('Saved config:', cfg)}
+            entityId={selectedEntityId || undefined}
+            onSave={(cfg) => saveConfig({ ...config, ...cfg } as any)}
           />
         </div>
       </div>
