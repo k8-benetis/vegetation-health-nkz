@@ -1347,8 +1347,9 @@ async def get_zoning_geojson(parcel_id: str, user: dict = Depends(require_auth))
 # =============================================================================
 # Prediction Router (N8N-ready)
 # =============================================================================
-from app.api.prediction import router as prediction_router
-app.include_router(prediction_router)
+# TODO: Fix circular import
+# from app.api.prediction import router as prediction_router
+# app.include_router(prediction_router)
 
 
 # =============================================================================
