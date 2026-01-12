@@ -8,12 +8,15 @@ import React, { createContext, useContext, useState, useCallback, useEffect, typ
 import type { VegetationIndexType } from '../types';
 import { useVegetationApi } from '../hooks/useVegetationApi';
 import { useCropRecommendation } from '../hooks/useCropRecommendation';
+import { useVegetationScenes } from '../hooks/useVegetationScenes';
 
 interface VegetationContextType {
   selectedIndex: VegetationIndexType;
   selectedDate: string | null;
   selectedEntityId: string | null;
   selectedSceneId: string | null;
+  parcels: any[];
+  loading: boolean;
   setSelectedIndex: (index: VegetationIndexType) => void;
   setSelectedDate: (date: string | null) => void;
   setSelectedEntityId: (entityId: string | null) => void;
@@ -26,51 +29,60 @@ const defaultContext: VegetationContextType = {
   selectedDate: null,
   selectedEntityId: null,
   selectedSceneId: null,
+  parcels: [],
+  loading: false,
   setSelectedIndex: () => {},
   setSelectedDate: () => {},
   setSelectedEntityId: () => {},
   setSelectedSceneId: () => {},
 };
 
-const VegetationContext = createContext<VegetationContextType | undefined>(undefined);
-
-// Internal component to handle side-effects of entity selection
-function CropAutoDetector() {
-  const { selectedEntityId, setSelectedIndex } = useVegetationContext();
-  const api = useVegetationApi();
-  const [cropSpecies, setCropSpecies] = useState<string | undefined>(undefined);
-  
-  // 1. Fetch entity details when ID changes
-  useEffect(() => {
-    if (!selectedEntityId) return;
-    
-    let active = true;
-    api.getEntityDetails(selectedEntityId).then(entity => {
-      if (active && entity?.cropSpecies?.value) {
-        setCropSpecies(entity.cropSpecies.value);
-      }
-    });
-    return () => { active = false; };
-  }, [selectedEntityId, api]);
-
-  // 2. Fetch recommendation when species avail
-  const { recommendation } = useCropRecommendation(cropSpecies);
-
-  // 3. Auto-set index if valid
-  useEffect(() => {
-    if (recommendation?.default_index) {
-      setSelectedIndex(recommendation.default_index as VegetationIndexType);
-    }
-  }, [recommendation, setSelectedIndex]);
-
-  return null;
-}
+// Export context object for consumers that might import it directly (handling TS2724)
+export const VegetationContext = createContext<VegetationContextType | undefined>(undefined);
 
 export function VegetationProvider({ children }: { children: ReactNode }) {
   const [selectedIndex, setSelectedIndex] = useState<VegetationIndexType>('NDVI');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
+  
+  const [parcels, setParcels] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const api = useVegetationApi();
+  const { scenes } = useVegetationScenes(selectedEntityId, undefined, undefined);
+
+  // Load Parcels on mount
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    api.listParcels().then(data => {
+      if (active) {
+        setParcels(data || []);
+        setLoading(false);
+      }
+    });
+    return () => { active = false; };
+  }, [api]); // api is stable (useCallback)
+
+  // Auto-select latest scene when scenes load and none selected
+  useEffect(() => {
+    if (scenes.length > 0 && !selectedSceneId) {
+      console.log('[VegetationContext] Auto-selecting latest scene:', scenes[0].id);
+      setSelectedSceneId(scenes[0].id);
+    }
+  }, [scenes, selectedSceneId]);
+
+  // Auto-detect crop type
+  const { recommendation } = useCropRecommendation(
+    parcels.find(p => p.id === selectedEntityId)?.cropSpecies?.value
+  );
+
+  useEffect(() => {
+    if (recommendation?.default_index) {
+      setSelectedIndex(recommendation.default_index as VegetationIndexType);
+    }
+  }, [recommendation]);
 
   const handleIndexChange = useCallback((index: VegetationIndexType) => {
     setSelectedIndex(index);
@@ -82,6 +94,8 @@ export function VegetationProvider({ children }: { children: ReactNode }) {
 
   const handleEntityChange = useCallback((entityId: string | null) => {
     setSelectedEntityId(entityId);
+    // Reset scene when entity changes to force re-selection logic
+    setSelectedSceneId(null); 
   }, []);
 
   const handleSceneChange = useCallback((sceneId: string | null) => {
@@ -95,13 +109,14 @@ export function VegetationProvider({ children }: { children: ReactNode }) {
         selectedDate,
         selectedEntityId,
         selectedSceneId,
+        parcels,
+        loading,
         setSelectedIndex: handleIndexChange,
         setSelectedDate: handleDateChange,
         setSelectedEntityId: handleEntityChange,
         setSelectedSceneId: handleSceneChange,
       }}
     >
-      <CropAutoDetector />
       {children}
     </VegetationContext.Provider>
   );
@@ -109,13 +124,11 @@ export function VegetationProvider({ children }: { children: ReactNode }) {
 
 /**
  * Hook to access vegetation context.
- * Returns default values if no provider is present (allows standalone slot usage).
  */
 export function useVegetationContext(): VegetationContextType {
   const context = useContext(VegetationContext);
-  // Return default context if not in provider - allows standalone slot usage
   if (!context) {
-    console.warn('[VegetationContext] No provider found, using default values');
+    // console.warn('[VegetationContext] No provider found, using default values');
     return defaultContext;
   }
   return context;

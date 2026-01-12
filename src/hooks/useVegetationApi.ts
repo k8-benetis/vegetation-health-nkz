@@ -56,6 +56,7 @@ export function useVegetationApi() {
   }, [token]);
 
   const getEntityDetails = useCallback(async (entityId: string): Promise<EntityDetails | null> => {
+    listParcels,
     if (!token) return null;
     try {
       // Assuming generic NGSI-LD proxy or dedicated endpoint
@@ -70,9 +71,24 @@ export function useVegetationApi() {
     }
   }, [token]);
 
+  const listParcels = useCallback(async (): Promise<EntityDetails[]> => {
+    if (!token) return [];
+    try {
+      const res = await fetch(`/api/entities?type=AgriParcel&limit=100`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return [];
+      return await res.json();
+    } catch (e) {
+      console.error("Error listing parcels:", e);
+      return [];
+    }
+  }, [token]);
+
   return {
     getCarbonConfig,
     saveCarbonConfig,
     getEntityDetails
+    listParcels,
   };
 }

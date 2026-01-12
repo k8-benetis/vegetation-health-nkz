@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from '@nekazari/sdk';
 import { Card } from '@nekazari/ui-kit';
-import { VegetationContext, VegetationProvider, useVegetationContext } from './services/vegetationContext';
+import { VegetationProvider, useVegetationContext } from './services/vegetationContext';
 import { VegetationConfig } from './components/VegetationConfig';
 import { VegetationAnalytics } from './components/VegetationAnalytics';
-import { Calendar, Layers, Leaf, Map as MapIcon, ChevronRight } from 'lucide-react';
+import { Calendar, Layers, Leaf, ChevronRight } from 'lucide-react';
 
 const DashboardContent: React.FC = () => {
   const { 
