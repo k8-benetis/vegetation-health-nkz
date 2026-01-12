@@ -1275,7 +1275,8 @@ async def compare_years(
     }
 
 # --- Zoning / VRA Endpoints ---
-from app.jobs.zoning_algorithm import ZoningAlgorithm
+# Lazy import - see route function below
+# from app.jobs.zoning_algorithm import ZoningAlgorithm
 
 @app.post("/api/jobs/zoning/{parcel_id}")
 async def trigger_zoning(parcel_id: str, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
@@ -1288,6 +1289,7 @@ async def trigger_zoning(parcel_id: str, background_tasks: BackgroundTasks, user
     task_id = f"zoning-{parcel_id}-{datetime.now().timestamp()}"
     
     def run_zoning():
+        from app.jobs.zoning_algorithm import ZoningAlgorithm
         zoning = ZoningAlgorithm(orion_url=ORION_URL)
         # Assuming we just need to pass parcel_id
         zoning.execute(parcel_id, parcel_id, {}) # Mock scene_id as parcel_id for now or fetch latest
