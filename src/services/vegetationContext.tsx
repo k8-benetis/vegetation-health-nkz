@@ -50,7 +50,7 @@ export function VegetationProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const api = useVegetationApi();
-  const { scenes } = useVegetationScenes(selectedEntityId, undefined, undefined);
+  const { scenes } = useVegetationScenes({ entityId: selectedEntityId || undefined });
 
   // Load Parcels on mount
   useEffect(() => {

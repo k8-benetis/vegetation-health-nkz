@@ -42,7 +42,7 @@ const DashboardContent: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">
-            <Card padding="none" className="overflow-hidden">
+            <Card className="overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-slate-600">
                   <thead className="bg-slate-50 text-slate-900 font-semibold border-b border-slate-200">
