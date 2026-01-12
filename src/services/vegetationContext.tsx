@@ -1,129 +1,89 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useVegetationApi } from '../hooks/useVegetationApi';
-import { useVegetationScenes } from '../hooks/useVegetationScenes';
-import { useAuth } from '../hooks/useAuth'; // Direct Auth Dependency
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
+import type { VegetationIndexType } from '../types';
 
 interface VegetationContextType {
-  selectedIndex: string | null;
-  selectedDate: string;
   selectedEntityId: string | null;
   selectedSceneId: string | null;
-  parcels: any[];
-  loading: boolean;
-  setSelectedIndex: (index: string) => void;
-  setSelectedDate: (date: string) => void;
+  selectedIndex: VegetationIndexType | null;
+  selectedDate: Date | null;
   setSelectedEntityId: (id: string | null) => void;
   setSelectedSceneId: (id: string | null) => void;
+  setSelectedIndex: (index: VegetationIndexType | null) => void;
+  setSelectedDate: (date: Date | null) => void;
+  resetContext: () => void;
 }
 
-const defaultContext: VegetationContextType = {
-  selectedIndex: null,
-  selectedDate: '',
-  selectedEntityId: null,
-  selectedSceneId: null,
-  parcels: [],
-  loading: false,
-  setSelectedIndex: () => {},
-  setSelectedDate: () => {},
-  setSelectedEntityId: () => {},
-  setSelectedSceneId: () => {},
-};
+const VegetationContext = createContext<VegetationContextType | undefined>(undefined);
 
-const VegetationContext = createContext<VegetationContextType>(defaultContext);
-
-export function VegetationProvider({ children }: { children: React.ReactNode }) {
-  const [selectedIndex, setSelectedIndex] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>('');
+export const VegetationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
-  const [parcels, setParcels] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState<VegetationIndexType | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  const { token } = useAuth(); // Hard Dependency
-  const api = useVegetationApi();
-
-  // Load parcels on mount (or when token arrives)
+  // --- CRITICAL FIX: Listen for Host Selection Events ---
   useEffect(() => {
-    let active = true;
-    console.log('[Module:Context] 🔄 Effect Triggered', { 
-      hasToken: !!token, 
-      tokenLen: token?.length,
-      hasListParcels: !!api.listParcels 
-    });
-
-    if (!token) {
-        console.warn('[Module:Context] ⏳ Waiting for Token...');
-        return;
-    }
-
-    setLoading(true);
-    
-    api.listParcels().then(data => {
-      if (active) {
-        console.log('[Module:Context] 📦 Data Received:', Array.isArray(data) ? `Array(${data.length})` : 'Invalid');
-        if (Array.isArray(data)) {
-          setParcels(data);
-        } else {
-          setParcels([]);
-        }
-        setLoading(false);
+    // Handler for entity selection event dispatched by Host App (CesiumMap)
+    const handleEntitySelected = (event: CustomEvent<{ entityId: string | null, type?: string }>) => {
+      console.log('[VegetationContext] Received entity selection:', event.detail);
+      if (event.detail && event.detail.entityId) {
+        setSelectedEntityId(event.detail.entityId);
+        // Reset scene specific state when entity changes
+        setSelectedSceneId(null);
+        // Keep index? Maybe default to NDVI?
+        if (!selectedIndex) setSelectedIndex('NDVI');
+      } else {
+        // Deselection?
+        // setSelectedEntityId(null); // Optional: clear selection if host clears it
       }
-    });
+    };
 
-    return () => { active = false; };
-  }, [api.listParcels, token]); // Add token as direct dependency
+    // Attach listener
+    window.addEventListener('nekazari:entity-selected', handleEntitySelected as EventListener);
 
-  // Handle scene auto-selection Logic
-  const { scenes } = useVegetationScenes({ entityId: selectedEntityId || undefined });
-
-  useEffect(() => {
-    if (scenes && scenes.length > 0 && !selectedSceneId) {
-      // Auto-select the latest scene
-      setSelectedSceneId(scenes[0].id);
+    // Initial check: if loaded after selection, check global context
+    const globalContext = (window as any).__nekazariContext;
+    if (globalContext && globalContext.selectedEntityId) {
+        console.log('[VegetationContext] Initializing from global context:', globalContext.selectedEntityId);
+        setSelectedEntityId(globalContext.selectedEntityId);
     }
-  }, [scenes, selectedSceneId]);
 
-  const handleIndexChange = useCallback((index: string) => {
-    setSelectedIndex(index);
-  }, []);
+    // Cleanup
+    return () => {
+      window.removeEventListener('nekazari:entity-selected', handleEntitySelected as EventListener);
+    };
+  }, []); // Run once on mount
 
-  const handleDateChange = useCallback((date: string) => {
-    setSelectedDate(date);
-  }, []);
-
-  const handleEntityChange = useCallback((entityId: string | null) => {
-    setSelectedEntityId(entityId);
-    setSelectedSceneId(null); 
-  }, []);
-
-  const handleSceneChange = useCallback((sceneId: string | null) => {
-    setSelectedSceneId(sceneId);
+  const resetContext = useCallback(() => {
+    setSelectedEntityId(null);
+    setSelectedSceneId(null);
+    setSelectedIndex(null);
+    setSelectedDate(null);
   }, []);
 
   return (
     <VegetationContext.Provider
       value={{
-        selectedIndex,
-        selectedDate,
         selectedEntityId,
         selectedSceneId,
-        parcels,
-        loading,
-        setSelectedIndex: handleIndexChange,
-        setSelectedDate: handleDateChange,
-        setSelectedEntityId: handleEntityChange,
-        setSelectedSceneId: handleSceneChange,
+        selectedIndex,
+        selectedDate,
+        setSelectedEntityId,
+        setSelectedSceneId,
+        setSelectedIndex,
+        setSelectedDate,
+        resetContext,
       }}
     >
       {children}
     </VegetationContext.Provider>
   );
-}
+};
 
-export function useVegetationContext(): VegetationContextType {
+export const useVegetationContext = () => {
   const context = useContext(VegetationContext);
-  if (!context) {
-    return defaultContext;
+  if (context === undefined) {
+    throw new Error('useVegetationContext must be used within a VegetationProvider');
   }
   return context;
-}
+};
