@@ -1134,7 +1134,7 @@ class TimelineStatsResponse(BaseModel):
     period_end: str
 
 
-@app.get("/scenes/{entity_id}/stats", response_model=TimelineStatsResponse)
+@app.get("/api/vegetation/scenes/{entity_id}/stats", response_model=TimelineStatsResponse)
 async def get_scene_stats(
     entity_id: str,
     index_type: str = "NDVI",
@@ -1211,7 +1211,7 @@ async def get_scene_stats(
     )
 
 
-@app.get("/scenes/{entity_id}/compare-years", response_model=Dict[str, Any])
+@app.get("/api/vegetation/scenes/{entity_id}/compare-years", response_model=Dict[str, Any])
 async def compare_years(
     entity_id: str,
     index_type: str = "NDVI",
@@ -1278,7 +1278,7 @@ async def compare_years(
 # Lazy import - see route function below
 # from app.jobs.zoning_algorithm import ZoningAlgorithm
 
-@app.post("/api/jobs/zoning/{parcel_id}")
+@app.post("/api/vegetation/jobs/zoning/{parcel_id}")
 async def trigger_zoning(parcel_id: str, background_tasks: BackgroundTasks, user: dict = Depends(require_auth)):
     """
     Trigger VRA Management Zone clustering for a parcel.
@@ -1298,7 +1298,7 @@ async def trigger_zoning(parcel_id: str, background_tasks: BackgroundTasks, user
     
     return {"message": "Zoning job started", "task_id": task_id}
 
-@app.get("/api/jobs/zoning/{parcel_id}/geojson")
+@app.get("/api/vegetation/jobs/zoning/{parcel_id}/geojson")
 async def get_zoning_geojson(parcel_id: str, user: dict = Depends(require_auth)):
     """
     Get the Management Zones for a parcel as GeoJSON.

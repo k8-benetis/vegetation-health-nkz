@@ -95,8 +95,8 @@ export function useVegetationApi() {
   const getSceneStats = useCallback(async (entityId: string, indexType: string = 'NDVI', months: number = 12) => {
     if (!token) return { stats: [] };
     try {
-      // Endpoint: /api/scenes/{entity_id}/stats?index_type=NDVI&months=12
-      const url = `/api/scenes/${encodeURIComponent(entityId)}/stats?index_type=${indexType}&months=${months}`;
+      // Endpoint: /api/vegetation/scenes/{entity_id}/stats?index_type=NDVI&months=12
+      const url = `/api/vegetation/scenes/${encodeURIComponent(entityId)}/stats?index_type=${indexType}&months=${months}`;
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
