@@ -1,15 +1,42 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@nekazari/ui-kit';
 import { useVegetationContext } from '../services/vegetationContext';
+import { useVegetationApi } from '../services/api';
 import { TimeseriesChart } from './analytics/TimeseriesChart';
 import { DistributionHistogram } from './analytics/DistributionHistogram';
 import { useAuth } from '../hooks/useAuth';
+import type { VegetationJob } from '../types';
 
 export const VegetationAnalytics: React.FC = () => {
-    // Removed unused selectedDate
-    const { selectedIndex, selectedEntityId } = useVegetationContext();
+    const { selectedIndex, selectedEntityId, setSelectedEntityId } = useVegetationContext();
     const { isAuthenticated } = useAuth();
+    const api = useVegetationApi();
+    const [recentJobs, setRecentJobs] = useState<VegetationJob[]>([]);
+    const [loadingJobs, setLoadingJobs] = useState(false);
+
+    useEffect(() => {
+        if (!selectedEntityId && isAuthenticated) {
+            setLoadingJobs(true);
+            api.listJobs('completed', 20, 0)
+               .then(response => {
+                   setRecentJobs(response.jobs);
+               })
+               .catch(console.error)
+               .finally(() => setLoadingJobs(false));
+        }
+    }, [selectedEntityId, isAuthenticated]);
     
+    // Group jobs by entity to show unique parcels
+    const uniqueEntities = React.useMemo(() => {
+        const map = new Map<string, VegetationJob>();
+        recentJobs.forEach(job => {
+            if (job.entity_id && !map.has(job.entity_id)) {
+                map.set(job.entity_id, job);
+            }
+        });
+        return Array.from(map.values());
+    }, [recentJobs]);
+
     if (!isAuthenticated) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -20,18 +47,63 @@ export const VegetationAnalytics: React.FC = () => {
     
     if (!selectedEntityId) {
         return (
-            <div className="flex items-center justify-center h-64 bg-slate-50 rounded-xl border border-dashed border-slate-300">
-               <div className="text-center">
-                   <p className="text-slate-500 mb-2">Select a parcel to view analytics.</p>
-                   <p className="text-xs text-slate-400">Click on a parcel in the map.</p>
-               </div>
+            <div className="space-y-6 max-w-4xl mx-auto py-8">
+                <div className="flex items-center justify-center h-32 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                   <div className="text-center">
+                       <p className="text-slate-500 font-medium">No parcel selected.</p>
+                       <p className="text-xs text-slate-400">Select a recently analyzed parcel below or use the map.</p>
+                   </div>
+                </div>
+
+                <div>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-4">Recently Analyzed Parcels</h3>
+                    {loadingJobs ? (
+                        <div className="text-center py-4 text-slate-500">Loading history...</div>
+                    ) : uniqueEntities.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {uniqueEntities.map(job => (
+                                <div 
+                                    key={job.entity_id} 
+                                    className="cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => setSelectedEntityId(job.entity_id || null)}
+                                >
+                                    <Card padding="md">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <p className="font-medium text-slate-900">
+                                                    {job.entity_type} {job.entity_id?.substring(0, 8)}...
+                                                </p>
+                                                <p className="text-xs text-slate-500">
+                                                    Last Analysis: {new Date(job.created_at).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                            <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                                                {job.job_type}
+                                            </div>
+                                        </div>
+                                    </Card>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-slate-500 text-sm">No analysis history found.</p>
+                    )}
+                </div>
             </div>
         );
     }
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto py-8">
-            <h2 className="text-2xl font-bold text-slate-800">Analytics Dashboard</h2>
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-slate-800">Analytics Dashboard</h2>
+                <button 
+                    onClick={() => setSelectedEntityId(null)}
+                    className="text-sm text-slate-500 hover:text-slate-700 underline"
+                >
+                    Change Parcel
+                </button>
+            </div>
             
             {/* Main Timeseries */}
             <Card padding="lg" className="bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-xl shadow-sm">

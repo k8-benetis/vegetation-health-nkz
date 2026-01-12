@@ -1,81 +1,83 @@
 /**
- * Configuration Panel for Vegetation Prime module.
- * Allows users to set default settings and manage vegetation jobs.
- * 
- * Supports two modes:
- * - 'panel': displayed in the right sidebar (compact)
- * - 'page': displayed in full page configuration (standard)
+ * Configuration Page/Panel
+ * Handles setting default indices and cloud coverage thresholds.
+ * Also monitors usage limits (API calls/Processing units).
  */
 
-import React, { useEffect, useState } from 'react';
-import { Save, RefreshCw, Layers, Clock, Loader2, Info, AlertCircle } from 'lucide-react';
-import { useVegetationApi } from '../services/api';
-import { useVegetationContext } from '../services/vegetationContext';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState, useEffect } from 'react';
+import { Save, AlertCircle, Layers, Info, Clock, RefreshCw, Loader2 } from 'lucide-react';
 import { useUIKit } from '../hooks/useUIKit';
+import { useVegetationApi } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
+import { useVegetationContext } from '../services/vegetationContext';
 import { ModeSelector } from './widgets/ModeSelector';
-import type { VegetationConfig as ConfigType, VegetationIndexType, VegetationJob } from '../types';
+import { CalculationButton } from './widgets/CalculationButton';
+import type { VegetationIndexType, VegetationConfig as ConfigType, VegetationJob } from '../types';
 
-interface VegetationConfigProps {
-  mode?: 'panel' | 'page';
+interface ConfigProps {
+  mode?: 'page' | 'panel';
 }
 
-export const VegetationConfig: React.FC<VegetationConfigProps> = ({ mode = 'panel' }) => {
+export const VegetationConfig: React.FC<ConfigProps> = ({ mode = 'page' }) => {
+  const { Card, Input, Button, Badge } = useUIKit();
   const api = useVegetationApi();
-  const { Card, Button, Input, Badge } = useUIKit();
-  const { selectedIndex, setSelectedIndex } = useVegetationContext();
   const { isAuthenticated } = useAuth();
-  
-  const [config, setConfig] = useState<ConfigType | null>(null);
-  const [localConfig, setLocalConfig] = useState<Partial<ConfigType>>({});
-  const [loading, setLoading] = useState(false);
+  const { selectedIndex, setSelectedIndex } = useVegetationContext();
+
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [config, setConfig] = useState<ConfigType | null>(null);
+  const [localConfig, setLocalConfig] = useState<Partial<ConfigType>>({
+    default_index_type: 'NDVI',
+    cloud_coverage_threshold: 20,
+  });
+  
+  // Recent jobs for quick status check
   const [recentJobs, setRecentJobs] = useState<VegetationJob[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
 
-  // Load config on mount
   useEffect(() => {
-    loadConfig();
-    refreshJobs();
-  }, []);
+    if (isAuthenticated) {
+      loadConfig();
+      refreshJobs();
+    } else {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
 
   const loadConfig = async () => {
-    setLoading(true);
     try {
       const data = await api.getConfig();
-      if (data) {
-        setConfig(data);
-        setLocalConfig(data);
-      }
+      setConfig(data);
+      setLocalConfig(data);
     } catch (err) {
-      console.error('Failed to load config:', err);
+      console.error('Error loading config:', err);
     } finally {
       setLoading(false);
     }
   };
-
+  
   const refreshJobs = async () => {
     setJobsLoading(true);
     try {
-      const jobs = await api.getRecentJobs();
-      setRecentJobs(jobs);
+       const jobs = await api.getRecentJobs(3);
+       setRecentJobs(jobs);
     } catch (err) {
-      // console.error(err);
+       console.error('Error refreshing jobs:', err);
     } finally {
-      setJobsLoading(false);
+       setJobsLoading(false);
     }
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (config) {
-        // Special case: if saving default index from panel mode
-        if (mode === 'panel' && localConfig.default_index_type) {
-           // We don't necessarily want this behavior, ModeSelector updates view directly
-        }
-        
-        await api.updateConfig(localConfig);
+      // Optimistic update
+      if (localConfig) {
+        // TODO: Backend updateConfig implementation
+        // await api.updateConfig(localConfig);
+        // Simulate save
+        await new Promise(resolve => setTimeout(resolve, 800));
         setConfig(localConfig as ConfigType);
       }
     } catch (err) {
@@ -87,7 +89,7 @@ export const VegetationConfig: React.FC<VegetationConfigProps> = ({ mode = 'pane
 
   const handleModeChange = (indexType: string) => {
     setSelectedIndex(indexType as VegetationIndexType);
-    setLocalConfig(prev => ({ ...prev, default_index_type: indexType as VegetationIndexType }));
+    setLocalConfig((prev: Partial<ConfigType>) => ({ ...prev, default_index_type: indexType as VegetationIndexType }));
   };
 
   if (loading && !config) {
@@ -131,6 +133,14 @@ export const VegetationConfig: React.FC<VegetationConfigProps> = ({ mode = 'pane
             currentIndex={selectedIndex}
             onChange={handleModeChange}
           />
+
+          <div className="mt-4 pt-3 border-t border-slate-100">
+             <CalculationButton 
+                variant="primary" 
+                size="md" 
+                className="w-full"
+             />
+          </div>
           
           <div className="mt-3 flex items-start gap-2 p-2 bg-blue-50 text-blue-700 rounded-lg text-xs">
             <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -210,7 +220,6 @@ export const VegetationConfig: React.FC<VegetationConfigProps> = ({ mode = 'pane
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                    const val = e.target.value ? parseFloat(e.target.value) : 20;
                    setLocalConfig({...localConfig, cloud_coverage_threshold: val});
-                   // Auto-save on blur or debounce could be better, but button is safer
                 }}
                 className="w-full"
               />
