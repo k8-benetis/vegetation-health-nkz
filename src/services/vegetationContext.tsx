@@ -1,32 +1,24 @@
-/**
- * Global state context for Vegetation Prime module.
- * Context is OPTIONAL - returns default values when no provider present.
- * This allows slots to work independently without requiring a shared provider.
- */
-
-import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import type { VegetationIndexType } from '../types';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useVegetationApi } from '../hooks/useVegetationApi';
-import { useCropRecommendation } from '../hooks/useCropRecommendation';
 import { useVegetationScenes } from '../hooks/useVegetationScenes';
+import { useAuth } from '../hooks/useAuth'; // Direct Auth Dependency
 
 interface VegetationContextType {
-  selectedIndex: VegetationIndexType;
-  selectedDate: string | null;
+  selectedIndex: string | null;
+  selectedDate: string;
   selectedEntityId: string | null;
   selectedSceneId: string | null;
   parcels: any[];
   loading: boolean;
-  setSelectedIndex: (index: VegetationIndexType) => void;
-  setSelectedDate: (date: string | null) => void;
-  setSelectedEntityId: (entityId: string | null) => void;
-  setSelectedSceneId: (sceneId: string | null) => void;
+  setSelectedIndex: (index: string) => void;
+  setSelectedDate: (date: string) => void;
+  setSelectedEntityId: (id: string | null) => void;
+  setSelectedSceneId: (id: string | null) => void;
 }
 
-// Default context values for standalone usage
 const defaultContext: VegetationContextType = {
-  selectedIndex: 'NDVI',
-  selectedDate: null,
+  selectedIndex: null,
+  selectedDate: '',
   selectedEntityId: null,
   selectedSceneId: null,
   parcels: [],
@@ -37,64 +29,70 @@ const defaultContext: VegetationContextType = {
   setSelectedSceneId: () => {},
 };
 
-// Export context object for consumers that might import it directly (handling TS2724)
-export const VegetationContext = createContext<VegetationContextType | undefined>(undefined);
+const VegetationContext = createContext<VegetationContextType>(defaultContext);
 
-export function VegetationProvider({ children }: { children: ReactNode }) {
-  const [selectedIndex, setSelectedIndex] = useState<VegetationIndexType>('NDVI');
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+export function VegetationProvider({ children }: { children: React.ReactNode }) {
+  const [selectedIndex, setSelectedIndex] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
-  
   const [parcels, setParcels] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
+  const { token } = useAuth(); // Hard Dependency
   const api = useVegetationApi();
-  const { scenes } = useVegetationScenes({ entityId: selectedEntityId || undefined });
 
-  // Load Parcels on mount
+  // Load parcels on mount (or when token arrives)
   useEffect(() => {
     let active = true;
+    console.log('[Module:Context] 🔄 Effect Triggered', { 
+      hasToken: !!token, 
+      tokenLen: token?.length,
+      hasListParcels: !!api.listParcels 
+    });
+
+    if (!token) {
+        console.warn('[Module:Context] ⏳ Waiting for Token...');
+        return;
+    }
+
     setLoading(true);
+    
     api.listParcels().then(data => {
       if (active) {
-        setParcels(Array.isArray(data) ? data : []);
+        console.log('[Module:Context] 📦 Data Received:', Array.isArray(data) ? `Array(${data.length})` : 'Invalid');
+        if (Array.isArray(data)) {
+          setParcels(data);
+        } else {
+          setParcels([]);
+        }
         setLoading(false);
       }
     });
-    return () => { active = false; };
-  }, [api.listParcels]);
 
-  // Auto-select latest scene when scenes load and none selected
+    return () => { active = false; };
+  }, [api.listParcels, token]); // Add token as direct dependency
+
+  // Handle scene auto-selection Logic
+  const { scenes } = useVegetationScenes({ entityId: selectedEntityId || undefined });
+
   useEffect(() => {
-    if (scenes.length > 0 && !selectedSceneId) {
-      console.log('[VegetationContext] Auto-selecting latest scene:', scenes[0].id);
+    if (scenes && scenes.length > 0 && !selectedSceneId) {
+      // Auto-select the latest scene
       setSelectedSceneId(scenes[0].id);
     }
   }, [scenes, selectedSceneId]);
 
-  // Auto-detect crop type
-  const { recommendation } = useCropRecommendation(
-    parcels.find(p => p.id === selectedEntityId)?.cropSpecies?.value
-  );
-
-  useEffect(() => {
-    if (recommendation?.default_index) {
-      setSelectedIndex(recommendation.default_index as VegetationIndexType);
-    }
-  }, [recommendation]);
-
-  const handleIndexChange = useCallback((index: VegetationIndexType) => {
+  const handleIndexChange = useCallback((index: string) => {
     setSelectedIndex(index);
   }, []);
 
-  const handleDateChange = useCallback((date: string | null) => {
+  const handleDateChange = useCallback((date: string) => {
     setSelectedDate(date);
   }, []);
 
   const handleEntityChange = useCallback((entityId: string | null) => {
     setSelectedEntityId(entityId);
-    // Reset scene when entity changes to force re-selection logic
     setSelectedSceneId(null); 
   }, []);
 
@@ -122,13 +120,9 @@ export function VegetationProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * Hook to access vegetation context.
- */
 export function useVegetationContext(): VegetationContextType {
   const context = useContext(VegetationContext);
   if (!context) {
-    // console.warn('[VegetationContext] No provider found, using default values');
     return defaultContext;
   }
   return context;
