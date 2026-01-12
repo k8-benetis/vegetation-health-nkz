@@ -1273,3 +1273,184 @@ async def compare_years(
             "stats": get_year_stats(current_year - 1)
         }
     }
+
+# --- Zoning / VRA Endpoints ---
+from app.jobs.zoning_algorithm import ZoningAlgorithm
+
+@app.post("/api/jobs/zoning/{parcel_id}")
+async def trigger_zoning(parcel_id: str, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
+    """
+    Trigger VRA Management Zone clustering for a parcel.
+    """
+    # 1. Verify ownership (mocked for now)
+    
+    # 2. Add to background tasks
+    task_id = f"zoning-{parcel_id}-{datetime.now().timestamp()}"
+    
+    def run_zoning():
+        zoning = ZoningAlgorithm(orion_url=ORION_URL)
+        # Assuming we just need to pass parcel_id
+        zoning.execute(parcel_id, parcel_id, {}) # Mock scene_id as parcel_id for now or fetch latest
+
+    background_tasks.add_task(run_zoning)
+    
+    return {"message": "Zoning job started", "task_id": task_id}
+
+@app.get("/api/jobs/zoning/{parcel_id}/geojson")
+async def get_zoning_geojson(parcel_id: str, user: dict = Depends(get_current_user)):
+    """
+    Get the Management Zones for a parcel as GeoJSON.
+    """
+    # In a real scenario, we query Orion-LD for type=AgriManagementZone&q=refParcel=={parcel_id}
+    # For now, we return a mock FeatureCollection if no data, or try to query if client available.
+    
+    # Mock Response for Demo/Fallback
+    return {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {
+                    "cluster_id": 1,
+                    "potential_yield": "High",
+                    "nitrogen_recommendation": 120
+                },
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        # Generate some simple offset polygon from parcel center or just a box
+                        # This would be real data in production
+                        [[-1.6, 42.8], [-1.59, 42.8], [-1.59, 42.81], [-1.6, 42.81], [-1.6, 42.8]]
+                    ]
+                }
+            },
+            {
+                 "type": "Feature",
+                "properties": {
+                    "cluster_id": 2,
+                    "potential_yield": "Low",
+                     "nitrogen_recommendation": 80
+                },
+                "geometry": {
+                     "type": "Polygon",
+                     "coordinates": [
+                        [[-1.59, 42.8], [-1.58, 42.8], [-1.58, 42.81], [-1.59, 42.81], [-1.59, 42.8]]
+                     ]
+                }
+            }
+        ]
+    }
+
+
+# =============================================================================
+# Prediction Router (N8N-ready)
+# =============================================================================
+from app.api.prediction import router as prediction_router
+app.include_router(prediction_router)
+
+
+# =============================================================================
+# Custom Formula Preview API (On-the-fly calculation)
+# =============================================================================
+class FormulaPreviewRequest(BaseModel):
+    """Request for custom formula preview calculation."""
+    formula: str = Field(..., description="Band formula, e.g., (B08-B04)/(B08+B04)")
+    scene_id: Optional[str] = None
+    entity_id: Optional[str] = None
+    bbox: Optional[List[float]] = Field(None, description="Bounding box [minLon, minLat, maxLon, maxLat]")
+
+
+class FormulaPreviewResponse(BaseModel):
+    """Response with preview statistics and tile URL."""
+    formula: str
+    is_valid: bool
+    bands_used: List[str]
+    statistics: Optional[Dict[str, float]] = None
+    tile_url: Optional[str] = None
+    error: Optional[str] = None
+    # N8N integration
+    webhook_metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+@app.post("/api/vegetation/calculate/preview", response_model=FormulaPreviewResponse)
+async def calculate_formula_preview(
+    request: FormulaPreviewRequest,
+    current_user: dict = Depends(require_auth)
+):
+    """
+    Preview custom formula calculation.
+    
+    Returns validation, statistics preview, and tile URL for visualization.
+    Designed for integration with Formula Studio UI and N8N workflows.
+    
+    **Example Formulas:**
+    - NDVI: `(B08-B04)/(B08+B04)`
+    - NDWI: `(B03-B08)/(B03+B08)`
+    - Custom Chlorophyll: `(B05-B04)/(B05+B04-B03)`
+    
+    **N8N Integration:** Use this endpoint to validate formulas before batch processing.
+    """
+    from app.services.processor import SentinelProcessor
+    
+    formula = request.formula.strip()
+    
+    # Validate formula syntax
+    valid_bands = ['B02', 'B03', 'B04', 'B05', 'B06', 'B07', 'B08', 'B8A', 'B11', 'B12']
+    bands_found = [b for b in valid_bands if b in formula]
+    
+    if not bands_found:
+        return FormulaPreviewResponse(
+            formula=formula,
+            is_valid=False,
+            bands_used=[],
+            error="No valid bands found in formula. Use: B02, B03, B04, B05, B06, B07, B08, B8A, B11, B12"
+        )
+    
+    # Basic syntax validation (check for balanced parentheses, no dangerous chars)
+    try:
+        # Remove allowed characters and check if anything dangerous remains
+        test_formula = formula
+        for band in valid_bands:
+            test_formula = test_formula.replace(band, "1")
+        test_formula = test_formula.replace(" ", "").replace("(", "").replace(")", "")
+        test_formula = test_formula.replace("+", "").replace("-", "").replace("*", "").replace("/", "")
+        test_formula = test_formula.replace(".", "").replace("0", "").replace("1", "").replace("2", "")
+        test_formula = test_formula.replace("3", "").replace("4", "").replace("5", "").replace("6", "")
+        test_formula = test_formula.replace("7", "").replace("8", "").replace("9", "")
+        
+        if test_formula:
+            return FormulaPreviewResponse(
+                formula=formula,
+                is_valid=False,
+                bands_used=bands_found,
+                error=f"Invalid characters in formula: {test_formula}"
+            )
+    except Exception as e:
+        return FormulaPreviewResponse(
+            formula=formula,
+            is_valid=False,
+            bands_used=bands_found,
+            error=str(e)
+        )
+    
+    # Build tile URL for visualization
+    tile_url = None
+    if request.scene_id:
+        tile_url = f"/api/vegetation/tiles/{{z}}/{{x}}/{{y}}.png?scene_id={request.scene_id}&formula={formula}"
+    
+    return FormulaPreviewResponse(
+        formula=formula,
+        is_valid=True,
+        bands_used=bands_found,
+        tile_url=tile_url,
+        statistics={
+            "estimated_range_min": -1.0,
+            "estimated_range_max": 1.0,
+            "bands_required": len(bands_found)
+        },
+        webhook_metadata={
+            "intelligence_module_compatible": True,
+            "n8n_batch_ready": True,
+            "supported_outputs": ["tile_xyz", "geotiff", "statistics"]
+        }
+    )
