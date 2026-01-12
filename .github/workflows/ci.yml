@@ -7,112 +7,9 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  backend-tests:
-    runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgis/postgis:15-3.4
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_db
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-      
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install PostgreSQL client
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y postgresql-client
-    
-    - name: Wait for PostgreSQL
-      run: |
-        until pg_isready -h localhost -p 5432 -U postgres; do
-          echo "Waiting for PostgreSQL..."
-          sleep 2
-        done
-        echo "PostgreSQL is ready!"
-    
-    - name: Install dependencies
-      run: |
-        cd backend
-        pip install -r requirements.txt
-    
-    - name: Run migrations
-      env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
-      run: |
-        cd backend
-        python scripts/run_migrations.py || echo "Migrations completed or already applied"
-    
-    - name: Verify migrations
-      env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
-      run: |
-        cd backend
-        python -c "
-        import psycopg2
-        import os
-        import sys
-        try:
-            conn = psycopg2.connect(os.getenv('DATABASE_URL'))
-            cur = conn.cursor()
-            cur.execute(\"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'vegetation_config')\")
-            exists = cur.fetchone()[0]
-            print(f'vegetation_config table exists: {exists}')
-            if exists:
-                print('Migrations successful!')
-                sys.exit(0)
-            else:
-                print('Warning: vegetation_config table not found')
-                sys.exit(0)  # Don't fail, migrations may be idempotent
-            conn.close()
-        except Exception as e:
-            print(f'Error verifying migrations: {e}')
-            sys.exit(0)  # Don't fail CI if verification has issues
-        "
-    
-    - name: Run tests (if available)
-      env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
-        CELERY_BROKER_URL: redis://localhost:6379/0
-        REDIS_CACHE_URL: redis://localhost:6379/1
-      run: |
-        cd backend
-        # pytest tests/  # Uncomment when tests are added
-        echo "Tests not yet implemented - skipping"
-        exit 0
-    
-    - name: Lint with flake8 (if available)
-      run: |
-        cd backend
-        # pip install flake8
-        # flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        echo "Linting not yet configured"
-        exit 0
-
+  # Backend tests disabled by request to speed up CI (reliance on existing server environment)
+  # backend-tests: ...
+  
   frontend-tests:
     runs-on: ubuntu-latest
     
@@ -132,11 +29,6 @@ jobs:
         # Remove package-lock.json to force regeneration with npm SDK
         rm -f package-lock.json
         npm install
-        # Verify SDK installation
-        echo "=== Verifying SDK installation ==="
-        npm list @nekazari/sdk || echo "WARNING: SDK not found in npm list"
-        ls -la node_modules/@nekazari/sdk/ || echo "WARNING: SDK directory not found"
-        test -f node_modules/@nekazari/sdk/dist/index.js && echo "✓ SDK dist/index.js exists" || echo "ERROR: SDK dist/index.js not found"
     
     - name: Type check
       run: npm run typecheck
