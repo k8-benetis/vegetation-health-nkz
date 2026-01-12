@@ -1,12 +1,7 @@
-/**
- * Calculation Button - Quick action button for calculating vegetation indices.
- * Shows loading state and success/error feedback.
- */
-
 import React from 'react';
-import { Calculator, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
-import { useIndexCalculation } from '../../hooks/useIndexCalculation';
+import { Calculator, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useVegetationContext } from '../../services/vegetationContext';
+import { useIndexCalculation } from '../../hooks/useIndexCalculation';
 
 interface CalculationButtonProps {
   sceneId?: string;
@@ -29,8 +24,7 @@ export const CalculationButton: React.FC<CalculationButtonProps> = ({
   startDate,
   endDate,
 }) => {
-  // Button component not needed - using native button
-  const { selectedIndex, selectedSceneId, selectedEntityId } = useVegetationContext();
+  const { selectedIndex, selectedSceneId, selectedEntityId, setSelectedIndex } = useVegetationContext();
   const { calculateIndex, isCalculating, error, success, resetState } = useIndexCalculation();
 
   const effectiveSceneId = sceneId || selectedSceneId;
@@ -39,39 +33,34 @@ export const CalculationButton: React.FC<CalculationButtonProps> = ({
 
   const handleClick = async () => {
     resetState();
-    await calculateIndex({
+    const jobId = await calculateIndex({
       sceneId: effectiveSceneId || undefined,
       entityId: effectiveEntityId || undefined,
       indexType: effectiveIndexType,
       startDate: startDate,
       endDate: endDate,
     });
-  };
 
-  const sizeClasses = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-3 text-base',
+    // CRITICAL FIX: Explicitly tell the Context (and Map) to update
+    if (jobId && setSelectedIndex) {
+       console.log('[CalculationButton] Calculation success, refreshing map layer:', effectiveIndexType);
+       setSelectedIndex(effectiveIndexType); 
+    }
   };
-
-  const variantClasses = {
-    primary: 'bg-green-600 text-white hover:bg-green-700',
-    secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300',
-  };
-
-  // Disable if: (no scene AND no date range) OR calculating
-  const isDisabled = (!effectiveSceneId && (!startDate || !endDate)) || isCalculating;
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       <button
         onClick={handleClick}
-        disabled={isDisabled}
+        disabled={isCalculating || (!effectiveSceneId && !startDate)}
         className={`
-          ${sizeClasses[size]} ${variantClasses[variant]}
-          rounded-md font-medium transition-all
+          px-4 py-2 rounded-md font-medium transition-all
           disabled:opacity-50 disabled:cursor-not-allowed
           flex items-center gap-2 justify-center
+          ${variant === 'primary' 
+            ? 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800' 
+            : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 active:bg-slate-100'}
+          ${size === 'sm' ? 'text-xs px-2 py-1' : size === 'lg' ? 'text-lg px-6 py-3' : 'text-sm'}
           ${className}
         `}
       >
@@ -104,5 +93,3 @@ export const CalculationButton: React.FC<CalculationButtonProps> = ({
     </div>
   );
 };
-
-
