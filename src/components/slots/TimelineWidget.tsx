@@ -38,12 +38,6 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
 
   const effectiveEntityId = entityId || selectedEntityId;
 
-  // Helper to format Date to YYYY-MM-DD string
-  const formatDateStr = (d: Date | null): string | undefined => {
-    if (!d) return undefined;
-    return d.toISOString().split('T')[0];
-  };
-
   // Load stats for the timeline chart
   const loadStats = useCallback(async () => {
     if (!effectiveEntityId) return;
@@ -193,7 +187,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
       {showChart && (
         <SmartTimeline
           stats={stats}
-          selectedDate={selectedDate ? selectedDate.toISOString().split('T')[0] : undefined} // Fix: Pass string
+          selectedDate={selectedDate ? selectedDate.toISOString().split('T')[0] : null} 
           onDateSelect={handleDateSelect}
           indexType={selectedIndex || 'NDVI'} 
           previousYearStats={showComparison ? previousYearStats : undefined}
