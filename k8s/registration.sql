@@ -44,7 +44,7 @@ INSERT INTO marketplace_modules (
     'https://nekazari.artotxiki.com/modules/vegetation-prime/assets/remoteEntry.js', -- Remote entry URL (public, via ingress)
     'vegetation_prime_module',                                                       -- Module Federation scope (must match vite.config.ts)
     './App',                                                                         -- Exposed module path (must match vite.config.ts)
-    '1.0.0',                                                                         -- Version
+    '1.30.0',                                                                         -- Version
     'Nekazari Team',                                                                 -- Author
     'analytics',                                                                     -- Category
     NULL,                                                                            -- Icon URL (optional)
