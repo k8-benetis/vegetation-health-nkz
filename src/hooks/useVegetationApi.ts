@@ -1,7 +1,7 @@
 /**
  * useVegetationApi Hook
  * Centralized API client for Vegetation Prime module.
- * Wraps authenticated fetch calls for Carbon Config and Entity details.
+ * Wraps authenticated fetch calls.
  */
 
 import { useCallback } from 'react';
@@ -29,8 +29,6 @@ export function useVegetationApi() {
   const getCarbonConfig = useCallback(async (entityId: string): Promise<CarbonConfig | null> => {
     if (!token) return null;
     try {
-      // Logic would be: GET /api/vegetation/carbon/{entityId}
-      // For now mocking or assuming endpoint exists
       const res = await fetch(`/api/vegetation/carbon/${entityId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -56,10 +54,8 @@ export function useVegetationApi() {
   }, [token]);
 
   const getEntityDetails = useCallback(async (entityId: string): Promise<EntityDetails | null> => {
-    listParcels,
     if (!token) return null;
     try {
-      // Assuming generic NGSI-LD proxy or dedicated endpoint
       const res = await fetch(`/api/vegetation/entities/${entityId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -88,7 +84,7 @@ export function useVegetationApi() {
   return {
     getCarbonConfig,
     saveCarbonConfig,
-    getEntityDetails
+    getEntityDetails,
     listParcels,
   };
 }
