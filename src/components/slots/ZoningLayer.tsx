@@ -7,7 +7,7 @@
 import React, { useEffect, useState } from 'react';
 import { GeoJsonLayer } from '@deck.gl/layers';
 import { useVegetationContext } from '../../services/vegetationContext';
-import { useAuth } from '@nekazari/sdk';
+import { useAuth } from '../../hooks/useAuth';
 
 // Zone colors based on cluster ID (vigor levels)
 const ZONE_COLORS: Record<number, [number, number, number, number]> = {
@@ -19,7 +19,6 @@ const ZONE_COLORS: Record<number, [number, number, number, number]> = {
 interface ZoningLayerProps {
   parcelId?: string;
   visible?: boolean;
-  onZoneClick?: (zoneId: number, properties: Record<string, unknown>) => void;
 }
 
 interface ZoneFeature {
@@ -50,7 +49,7 @@ export function createZoningLayer(
 
   return new GeoJsonLayer({
     id: 'vra-zoning-layer',
-    data: geojsonData,
+    data: geojsonData as any, // Cast to any to avoid strict Deck.gl GeoJSON mismatches
     pickable: true,
     stroked: true,
     filled: true,
@@ -58,15 +57,16 @@ export function createZoningLayer(
     lineWidthScale: 1,
     lineWidthMinPixels: 2,
     
-    getFillColor: (feature: ZoneFeature) => {
+    // Explicitly cast return type to any or Color to satisfy Deck.gl typings
+    getFillColor: ((feature: ZoneFeature) => {
       const zoneId = feature.properties?.zone_id ?? 1;
-      return ZONE_COLORS[zoneId] || [128, 128, 128, 150];
-    },
+      return (ZONE_COLORS[zoneId] || [128, 128, 128, 150]) as [number, number, number, number];
+    }) as any,
     
     getLineColor: [255, 255, 255, 255],
     getLineWidth: 2,
     
-    onClick: (info) => {
+    onClick: (info: any) => {
       if (info.object && onZoneClick) {
         const props = (info.object as ZoneFeature).properties;
         onZoneClick(props.zone_id, props);
@@ -82,7 +82,6 @@ export function createZoningLayer(
 export const ZoningLayerControl: React.FC<ZoningLayerProps> = ({
   parcelId: propParcelId,
   visible = true,
-  onZoneClick,
 }) => {
   const { selectedEntityId, selectedIndex } = useVegetationContext();
   const { token } = useAuth();

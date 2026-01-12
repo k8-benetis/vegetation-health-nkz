@@ -9,6 +9,7 @@ import { TimelineWidget } from '../components/slots/TimelineWidget';
 import { VegetationConfig } from '../components/VegetationConfig';
 // import { VegetationAnalytics } from '../components/VegetationAnalytics'; 
 import { VegetationProvider } from '../services/vegetationContext';
+import { ZoningLayerControl } from '../components/slots/ZoningLayer';
 
 // Type definitions for slot widgets (matching SDK types)
 export interface SlotWidgetDefinition {
@@ -34,7 +35,18 @@ export type ModuleViewerSlots = Record<SlotType, SlotWidgetDefinition[]> & {
  * These slots integrate the module into the Unified Viewer
  */
 export const vegetationPrimeSlots: ModuleViewerSlots = {
-  'layer-toggle': [],
+  'layer-toggle': [
+    {
+      id: 'zoning-layer-control',
+      component: 'ZoningLayerControl',
+      priority: 15,
+      localComponent: ZoningLayerControl,
+      defaultProps: { visible: true },
+      showWhen: {
+        entityType: ['AgriParcel']
+      }
+    }
+  ],
   'context-panel': [
     {
       id: 'vegetation-config',

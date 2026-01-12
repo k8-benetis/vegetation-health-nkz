@@ -4,8 +4,10 @@
  * This allows slots to work independently without requiring a shared provider.
  */
 
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { VegetationIndexType } from '../types';
+import { useVegetationApi } from '../hooks/useVegetationApi';
+import { useCropRecommendation } from '../hooks/useCropRecommendation';
 
 interface VegetationContextType {
   selectedIndex: VegetationIndexType;
@@ -31,6 +33,38 @@ const defaultContext: VegetationContextType = {
 };
 
 const VegetationContext = createContext<VegetationContextType | undefined>(undefined);
+
+// Internal component to handle side-effects of entity selection
+function CropAutoDetector() {
+  const { selectedEntityId, setSelectedIndex } = useVegetationContext();
+  const api = useVegetationApi();
+  const [cropSpecies, setCropSpecies] = useState<string | undefined>(undefined);
+  
+  // 1. Fetch entity details when ID changes
+  useEffect(() => {
+    if (!selectedEntityId) return;
+    
+    let active = true;
+    api.getEntityDetails(selectedEntityId).then(entity => {
+      if (active && entity?.cropSpecies?.value) {
+        setCropSpecies(entity.cropSpecies.value);
+      }
+    });
+    return () => { active = false; };
+  }, [selectedEntityId, api]);
+
+  // 2. Fetch recommendation when species avail
+  const { recommendation } = useCropRecommendation(cropSpecies);
+
+  // 3. Auto-set index if valid
+  useEffect(() => {
+    if (recommendation?.default_index) {
+      setSelectedIndex(recommendation.default_index as VegetationIndexType);
+    }
+  }, [recommendation, setSelectedIndex]);
+
+  return null;
+}
 
 export function VegetationProvider({ children }: { children: ReactNode }) {
   const [selectedIndex, setSelectedIndex] = useState<VegetationIndexType>('NDVI');
@@ -67,6 +101,7 @@ export function VegetationProvider({ children }: { children: ReactNode }) {
         setSelectedSceneId: handleSceneChange,
       }}
     >
+      <CropAutoDetector />
       {children}
     </VegetationContext.Provider>
   );

@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@nekazari/sdk';
+import { useAuth } from './useAuth';
 
 interface CropRecommendation {
   default_index: string;
