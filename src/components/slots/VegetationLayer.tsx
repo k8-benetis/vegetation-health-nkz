@@ -1,138 +1,109 @@
 /**
- * Vegetation Layer - Deck.gl layer component for rendering vegetation index tiles.
- * This component does NOT render DOM, it returns a Deck.gl layer configuration.
+ * Vegetation Layer - Cesium Direct Implementation
+ * Receives 'viewer' from CesiumMap slot renderer and manages layers directly.
  */
 
-import React, { useEffect, useState } from 'react';
-import { BitmapLayer, GeoJsonLayer } from '@deck.gl/layers';
-import { TileLayer } from '@deck.gl/geo-layers';
+import React, { useEffect, useRef } from 'react';
 import { useVegetationContext } from '../../services/vegetationContext';
-import type { VegetationIndexType } from '../../types';
 
 interface VegetationLayerProps {
-  /** Map view state (from Deck.gl or Mapbox) */
-  viewState?: {
-    longitude: number;
-    latitude: number;
-    zoom: number;
-  };
-  /** Callback when layer is ready */
-  onLayerReady?: (layer: any) => void;
+  viewer?: any; // Injected by CesiumMap
 }
 
-/**
- * Creates a Deck.gl TileLayer for vegetation indices or Zoning.
- * This function returns a layer configuration, not a React component.
- */
-export function createVegetationLayer(
-  selectedIndex: VegetationIndexType,
-  selectedDate: string | null,
-  sceneId?: string
-): TileLayer | GeoJsonLayer | null {
-  if (!selectedDate && selectedIndex !== 'VRA_ZONES') {
-     return null;
-  }
-  
-  if (!sceneId) return null;
-
-  // Handle Zoning (Vector)
-  if (selectedIndex === 'VRA_ZONES') {
-     // Fetch GeoJSON for the parcel's management zones
-     return new GeoJsonLayer({
-        id: 'zoning-layer',
-        data: `/api/jobs/zoning/${sceneId}/geojson`, 
-        pickable: true,
-        stroked: true,
-        filled: true,
-        extruded: true,
-        lineWidthScale: 20,
-        lineWidthMinPixels: 2,
-        getFillColor: [160, 160, 180, 200],
-        getLineColor: [0, 0, 0, 255],
-        getElevation: (d: any) => d.properties.cluster_id * 10 || 10, 
-        onHover: ({object: _object}: any) => {
-            // Tooltip handled by host
-        }
-     });
-  }
-
-  // Handle Raster (Optical & SAR)
-  const tileUrl = `/api/vegetation/tiles/{z}/{x}/{y}.png?scene_id=${sceneId}&index_type=${selectedIndex}`;
-
-  // Create BitmapLayer for each tile
-  const renderSubLayers = (props: any) => {
-    const { bbox, tile } = props;
-    
-    return new BitmapLayer(props, {
-      data: undefined,
-      image: tile.data,
-      bounds: bbox,
-      opacity: 0.8,
-      transparent: true,
-      colorMode: 'multiply',
-    });
-  };
-
-  // Create TileLayer
-  return new TileLayer({
-    id: `vegetation-layer-${selectedIndex}`,
-    data: tileUrl,
-    minZoom: 0,
-    maxZoom: 18,
-    tileSize: 256,
-    renderSubLayers,
-    updateTriggers: {
-      getTileData: [selectedIndex, selectedDate, sceneId],
-    },
-    onTileError: (error: Error, tile: any) => {
-      console.warn('Tile load error:', error, tile);
-    },
-  });
-}
-
-/**
- * Hook to get the current vegetation layer based on context.
- * Returns the layer configuration ready to be added to Deck.gl.
- */
-export function useVegetationLayer(
-  sceneId?: string
-): TileLayer | GeoJsonLayer | null {
+export const VegetationLayer: React.FC<VegetationLayerProps> = ({ viewer }) => {
   const { selectedIndex, selectedDate, selectedSceneId } = useVegetationContext();
-  const [layer, setLayer] = useState<TileLayer | GeoJsonLayer | null>(null);
-
-  // Use provided sceneId or fallback to context
-  const effectiveSceneId = sceneId || selectedSceneId;
-
-  useEffect(() => {
-    // For VRA_ZONES, we may not need a Date, but we need an Entity/Scene ID
-    if (selectedIndex === 'VRA_ZONES' && effectiveSceneId) {
-        setLayer(createVegetationLayer(selectedIndex, null, effectiveSceneId));
-    } else if (selectedDate && effectiveSceneId) {
-        setLayer(createVegetationLayer(selectedIndex, selectedDate, effectiveSceneId));
-    } else {
-        setLayer(null);
-    }
-  }, [selectedIndex, selectedDate, effectiveSceneId]);
-
-  return layer;
-}
-
-/**
- * React component wrapper for vegetation layer.
- */
-export const VegetationLayer: React.FC<VegetationLayerProps> = ({
-  onLayerReady,
-}) => {
-  const { selectedEntityId } = useVegetationContext();
-  const layer = useVegetationLayer(selectedEntityId || undefined);
+  
+  // Track our added layers to remove them cleanly
+  const layerRef = useRef<any>(null);
+  const dataSourceRef = useRef<any>(null);
 
   useEffect(() => {
-    if (layer && onLayerReady) {
-      onLayerReady(layer);
+    if (!viewer) {
+      console.warn('[VegetationLayer] No viewer provided');
+      return;
     }
-  }, [layer, onLayerReady]);
 
-  return null;
+    // @ts-ignore
+    const Cesium = window.Cesium;
+    if (!Cesium) return;
+
+    // 1. CLEANUP PREVIOUS LAYERS
+    if (layerRef.current) {
+        viewer.imageryLayers.remove(layerRef.current);
+        layerRef.current = null;
+    }
+    if (dataSourceRef.current) {
+        viewer.dataSources.remove(dataSourceRef.current);
+        dataSourceRef.current = null;
+    }
+
+    // If nothing selected, just exit (cleanup done)
+    if (!selectedSceneId && !selectedIndex) return;
+
+    // 2. HANDLE VECTOR LAYER (VRA ZONES)
+    if (selectedIndex === 'VRA_ZONES' && selectedSceneId) {
+        const geoJsonUrl = `/api/jobs/zoning/${selectedSceneId}/geojson`;
+        console.log('[VegetationLayer] Loading VRA Zones:', geoJsonUrl);
+
+        Cesium.GeoJsonDataSource.load(geoJsonUrl, {
+            stroke: Cesium.Color.BLACK,
+            fill: Cesium.Color.BLUE.withAlpha(0.5),
+            strokeWidth: 3
+        }).then((dataSource: any) => {
+            if (viewer.isDestroyed()) return;
+            
+            // Apply custom styling per feature
+            const entities = dataSource.entities.values;
+            for (let i = 0; i < entities.length; i++) {
+                const entity = entities[i];
+                const clusterId = entity.properties.cluster_id?.getValue();
+                
+                // Color ramp
+                const colors = [
+                    Cesium.Color.RED.withAlpha(0.6),
+                    Cesium.Color.ORANGE.withAlpha(0.6),
+                    Cesium.Color.YELLOW.withAlpha(0.6),
+                    Cesium.Color.GREEN.withAlpha(0.6),
+                    Cesium.Color.BLUE.withAlpha(0.6)
+                ];
+                const color = colors[clusterId % colors.length] || Cesium.Color.GRAY.withAlpha(0.6);
+                
+                entity.polygon.material = color;
+                entity.polygon.outline = true;
+                entity.polygon.outlineColor = Cesium.Color.BLACK;
+                entity.polygon.extrudedHeight = 10; // Slight extrusion for visibility
+            }
+
+            viewer.dataSources.add(dataSource);
+            dataSourceRef.current = dataSource;
+            viewer.flyTo(dataSource);
+        }).catch((err: any) => {
+            console.error('[VegetationLayer] Error loading zones:', err);
+        });
+        return;
+    }
+
+    // 3. HANDLE RASTER LAYER (NDVI, etc.)
+    if (selectedIndex && selectedSceneId) {
+        // Construct Tile URL (XYZ format)
+        // Note: Backend must support /tiles/{z}/{x}/{y}.png
+        const tileUrl = `/api/vegetation/tiles/{z}/{x}/{y}.png?scene_id=${selectedSceneId}&index_type=${selectedIndex}`;
+        console.log('[VegetationLayer] Adding Raster Layer:', tileUrl);
+
+        const provider = new Cesium.UrlTemplateImageryProvider({
+            url: tileUrl,
+            maximumLevel: 18,
+            credit: 'Vegetation Prime Module'
+        });
+
+        const layer = viewer.imageryLayers.addImageryProvider(provider);
+        layer.alpha = 0.8; // Default opacity
+        layerRef.current = layer;
+    }
+
+  }, [viewer, selectedIndex, selectedDate, selectedSceneId]);
+
+  return null; // Side-effect only
 };
 
 export default VegetationLayer;
