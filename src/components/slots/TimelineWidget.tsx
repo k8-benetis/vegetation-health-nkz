@@ -47,7 +47,8 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
 
     try {
       // Load current period stats
-      const response = await api.getSceneStats(effectiveEntityId, selectedIndex, 12);
+      // FIX: Ensure selectedIndex is not null using default
+      const response = await api.getSceneStats(effectiveEntityId, selectedIndex || 'NDVI', 12);
       setStats(response.stats);
 
       // Auto-select most recent scene if none selected
@@ -69,6 +70,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
     if (!effectiveEntityId || !showComparison) return;
 
     try {
+      // FIX: Ensure selectedIndex is not null
       const response = await api.compareYears(effectiveEntityId, selectedIndex || 'NDVI');
       // Convert previous year stats to SceneStats format
       const prevYearSceneStats: SceneStats[] = response.previous_year.stats.map(s => ({
@@ -190,7 +192,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ entityId }) => {
           stats={stats}
           selectedDate={selectedDate}
           onDateSelect={handleDateSelect}
-          indexType={selectedIndex || 'NDVI'}
+          indexType={selectedIndex || 'NDVI'} 
           previousYearStats={showComparison ? previousYearStats : undefined}
           showComparison={showComparison}
           isLoading={loading}
