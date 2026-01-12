@@ -63,7 +63,7 @@ export function VegetationProvider({ children }: { children: ReactNode }) {
       }
     });
     return () => { active = false; };
-  }, [api]); // api is stable (useCallback)
+  }, [api.listParcels]);
 
   // Auto-select latest scene when scenes load and none selected
   useEffect(() => {

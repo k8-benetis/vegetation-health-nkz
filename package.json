@@ -1,6 +1,6 @@
 {
   "name": "vegetation-prime-module",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Vegetation Prime - High-performance vegetation intelligence suite for Nekazari Platform",
   "license": "AGPL-3.0",
   "type": "module",

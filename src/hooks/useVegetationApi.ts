@@ -4,7 +4,7 @@
  * Wraps authenticated fetch calls.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useAuth } from './useAuth';
 
 interface CarbonConfig {
@@ -81,10 +81,13 @@ export function useVegetationApi() {
     }
   }, [token]);
 
-  return {
+  // Memoize the API object to prevent infinite loops in consumers
+  const api = useMemo(() => ({
     getCarbonConfig,
     saveCarbonConfig,
     getEntityDetails,
     listParcels,
-  };
+  }), [getCarbonConfig, saveCarbonConfig, getEntityDetails, listParcels]);
+
+  return api;
 }
